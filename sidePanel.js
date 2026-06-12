@@ -9,18 +9,6 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
           <button class="wm-close-btn" id="wm-close-btn" title="Close">✕</button>
         </div>
       </div>
-      <div class="wm-mini-toolbar">
-        <div class="wm-mini-colors">
-          <button class="wm-mini-swatch active" data-color="#ff3366" style="background:#ff3366"></button>
-          <button class="wm-mini-swatch" data-color="#3366ff" style="background:#3366ff"></button>
-          <button class="wm-mini-swatch" data-color="#ffffff" style="background:#ffffff"></button>
-          <button class="wm-mini-swatch" data-color="#1a1a2e" style="background:#1a1a2e"></button>
-        </div>
-        <input type="range" class="wm-mini-size" min="1" max="20" value="3">
-        <button class="wm-mini-btn" data-action="undo">↩</button>
-        <button class="wm-mini-btn" data-action="redo">↪</button>
-        <button class="wm-mini-btn" data-action="clear">🗑</button>
-      </div>
       <canvas class="wm-side-canvas" id="wm-side-canvas"></canvas>
     </div>
   `;
@@ -115,33 +103,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     }));
   });
 
-  // --- Mini toolbar logic ---
-  const miniToolbar = shadowRoot.querySelector('.wm-mini-toolbar');
-  
-  miniToolbar.addEventListener('click', (e) => {
-    const swatch = e.target.closest('.wm-mini-swatch');
-    if (swatch) {
-      const color = swatch.dataset.color;
-      miniToolbar.querySelectorAll('.wm-mini-swatch').forEach(s => s.classList.remove('active'));
-      swatch.classList.add('active');
-      engine.setToolState({ ...engine.toolState, color });
-      return;
-    }
 
-    const actionBtn = e.target.closest('.wm-mini-btn');
-    if (actionBtn) {
-      const action = actionBtn.dataset.action;
-      if (action === 'undo') engine.undo();
-      else if (action === 'redo') engine.redo();
-      else if (action === 'clear') engine.clear();
-      return;
-    }
-  });
-
-  const sizeSlider = miniToolbar.querySelector('.wm-mini-size');
-  sizeSlider.addEventListener('input', (e) => {
-    engine.setToolState({ ...engine.toolState, size: parseInt(e.target.value) });
-  });
 
   return {
     show: slideIn,

@@ -20,49 +20,54 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   icons.redo = `<svg viewBox="0 0 24 24"><polyline points="15 14 20 9 15 4"></polyline><path d="M4 20v-7a4 4 0 0 1 4-4h12"></path></svg>`;
 
   const html = `
-    <div class="wm-toolbar" id="wm-toolbar">
-      <div class="wm-toolbar-handle" title="Drag to move">⋮⋮</div>
-      <div class="wm-toolbar-tools">
-        <button class="wm-tool-btn active" data-tool="pen" title="Pen (P)">${icons.pen}</button>
-        <button class="wm-tool-btn" data-tool="highlighter" title="Highlighter (H)">${icons.highlighter}</button>
-        <button class="wm-tool-btn" data-tool="eraser" title="Eraser (E)">${icons.eraser}</button>
-        <button class="wm-tool-btn" data-tool="arrow" title="Arrow (A)">${icons.arrow}</button>
-        <button class="wm-tool-btn" data-tool="text" title="Text (T)">${icons.text}</button>
+    <div class="wm-toolbar-container" id="wm-toolbar-container">
+      <div class="wm-toolbar-handle" title="Drag to move">
+        <svg viewBox="0 0 24 24" width="20" height="20" stroke="currentColor" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="3" y1="12" x2="21" y2="12"></line>
+          <line x1="3" y1="6" x2="21" y2="6"></line>
+          <line x1="3" y1="18" x2="21" y2="18"></line>
+        </svg>
       </div>
-      <div class="wm-toolbar-divider"></div>
-      <div class="wm-toolbar-options">
-        <div class="wm-color-section">
-          <div class="wm-color-swatches">
-            <button class="wm-swatch active" data-color="#ff3366" style="background:#ff3366"></button>
-            <button class="wm-swatch" data-color="#3366ff" style="background:#3366ff"></button>
-            <button class="wm-swatch" data-color="#33cc66" style="background:#33cc66"></button>
-            <button class="wm-swatch" data-color="#ffcc00" style="background:#ffcc00"></button>
-            <button class="wm-swatch" data-color="#ffffff" style="background:#ffffff"></button>
-            <button class="wm-swatch" data-color="#1a1a2e" style="background:#1a1a2e"></button>
+      <div class="wm-toolbar hidden" id="wm-toolbar">
+        <div class="wm-toolbar-grid">
+          <div class="wm-color-picker-wrapper">
+            <button class="wm-color-btn" id="wm-color-btn" style="background:#ff3366"></button>
+            <div class="wm-color-popover hidden" id="wm-color-popover">
+              <div class="wm-color-swatches">
+                <button class="wm-swatch active" data-color="#ff3366" style="background:#ff3366"></button>
+                <button class="wm-swatch" data-color="#3366ff" style="background:#3366ff"></button>
+                <button class="wm-swatch" data-color="#33cc66" style="background:#33cc66"></button>
+                <button class="wm-swatch" data-color="#ffcc00" style="background:#ffcc00"></button>
+                <button class="wm-swatch" data-color="#1a1a2e" style="background:#1a1a2e"></button>
+                <button class="wm-swatch" data-color="#ffffff" style="background:#ffffff; border: 1px solid #ccc;"></button>
+              </div>
+              <div class="wm-custom-color-row">
+                <label>Custom</label>
+                <input type="color" class="wm-color-custom" value="#ff3366" title="Custom color">
+              </div>
+            </div>
           </div>
-          <input type="color" class="wm-color-custom" value="#ff3366" title="Custom color">
+          <button class="wm-action-btn" data-action="undo" title="Undo">${icons.undo}</button>
+          <button class="wm-action-btn" data-action="redo" title="Redo">${icons.redo}</button>
+
+          <button class="wm-tool-btn active" data-tool="pen" title="Pen">${icons.pen}</button>
+          <button class="wm-tool-btn" data-tool="highlighter" title="Highlighter">${icons.highlighter}</button>
+          <button class="wm-tool-btn" data-tool="eraser" title="Eraser">${icons.eraser}</button>
+          
+          <button class="wm-tool-btn" data-tool="arrow" title="Arrow">${icons.arrow}</button>
+          <button class="wm-tool-btn" data-tool="text" title="Text">${icons.text}</button>
+          <button class="wm-action-btn" data-action="clear" title="Clear">${icons.clear}</button>
+          
+          <button class="wm-action-btn" data-action="export" title="Export">${icons.export}</button>
+          <button class="wm-toggle-btn active" data-toggle="overlay" title="Overlay">${icons.overlay}</button>
+          <button class="wm-toggle-btn" data-toggle="pages" title="Pages">${icons.pages}</button>
+          
+          <button class="wm-toggle-btn" data-toggle="panel" title="Panel" style="grid-column: span 3; justify-self: center;">${icons.panel}</button>
         </div>
-        <div class="wm-slider-row">
-          <label class="wm-slider-label">Size</label>
+
+        <div class="wm-slider-row" style="grid-column: span 3">
           <input type="range" class="wm-slider" min="1" max="20" value="3" data-prop="size">
         </div>
-        <div class="wm-slider-row">
-          <label class="wm-slider-label">Opacity</label>
-          <input type="range" class="wm-slider" min="20" max="100" value="100" data-prop="opacity">
-        </div>
-      </div>
-      <div class="wm-toolbar-divider"></div>
-      <div class="wm-toolbar-actions">
-        <button class="wm-action-btn" data-action="undo" title="Undo (Ctrl+Z)">${icons.undo}</button>
-        <button class="wm-action-btn" data-action="redo" title="Redo (Ctrl+Y)">${icons.redo}</button>
-        <button class="wm-action-btn" data-action="clear" title="Clear">${icons.clear}</button>
-        <button class="wm-action-btn" data-action="export" title="Export PNG">${icons.export}</button>
-      </div>
-      <div class="wm-toolbar-divider"></div>
-      <div class="wm-toolbar-toggles">
-        <button class="wm-toggle-btn active" data-toggle="overlay" title="Draw on page">${icons.overlay}</button>
-        <button class="wm-toggle-btn" data-toggle="pages" title="Blank Pages">${icons.pages}</button>
-        <button class="wm-toggle-btn" data-toggle="panel" title="Side Panel (Ctrl+Shift+X)">${icons.panel}</button>
       </div>
     </div>
   `;
@@ -71,7 +76,10 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   container.innerHTML = html;
   shadowRoot.appendChild(container.firstElementChild);
   
+  const containerElement = shadowRoot.getElementById('wm-toolbar-container');
   const toolbarDiv = shadowRoot.getElementById('wm-toolbar');
+  const colorBtn = shadowRoot.getElementById('wm-color-btn');
+  const colorPopover = shadowRoot.getElementById('wm-color-popover');
   
   let toolState = { activeTool: 'pen', color: '#ff3366', size: 3, opacity: 1 };
   
@@ -81,29 +89,17 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     panel: null
   };
 
-  // --- Auto-collapse Logic ---
-  let collapseTimeout = null;
   const resetCollapseTimer = () => {
-    clearTimeout(collapseTimeout);
-    toolbarDiv.classList.remove('collapsed');
-    collapseTimeout = setTimeout(() => {
-      toolbarDiv.classList.add('collapsed');
-    }, 5000);
+    // Timer removed as per new "compact fixed" design
   };
-  toolbarDiv.addEventListener('mouseenter', resetCollapseTimer);
-  toolbarDiv.addEventListener('mousemove', resetCollapseTimer);
-  toolbarDiv.addEventListener('click', resetCollapseTimer);
-  // Start the timer initially
-  resetCollapseTimer();
 
   // --- Tool State Sync ---
   const syncToolState = async () => {
     const engine = getActiveEngine();
     if (engine) engine.setToolState(toolState);
     
-    // Update all engines' toolState just to be safe
-    // Since we only have getActiveEngine, we'll just update active for now
-    // the content.js activeSurface logic handles switching
+    // Broadcast the state change to all surfaces
+    shadowRoot.dispatchEvent(new CustomEvent('wm-tool-changed', { detail: toolState }));
 
     await chrome.runtime.sendMessage({
       type: 'SET_TOOL',
@@ -121,19 +117,27 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     shadowRoot.querySelectorAll('.wm-swatch').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.color === toolState.color);
     });
+    if (colorBtn) {
+      colorBtn.style.background = toolState.color;
+    }
     const customColor = shadowRoot.querySelector('.wm-color-custom');
     if (customColor) customColor.value = toolState.color;
     
     // Sliders
     const sizeSlider = shadowRoot.querySelector('.wm-slider[data-prop="size"]');
     if (sizeSlider) sizeSlider.value = toolState.size;
-    
-    const opacitySlider = shadowRoot.querySelector('.wm-slider[data-prop="opacity"]');
-    if (opacitySlider) opacitySlider.value = Math.round(toolState.opacity * 100);
   };
 
-  // --- Event Listeners ---
-  toolbarDiv.addEventListener('click', (e) => {
+  containerElement.addEventListener('click', (e) => {
+    // Close popover if clicking outside
+    if (!e.target.closest('.wm-color-picker-wrapper')) {
+      colorPopover.classList.add('hidden');
+    }
+
+    if (e.target.closest('#wm-color-btn')) {
+      colorPopover.classList.toggle('hidden');
+      return;
+    }
     const toolBtn = e.target.closest('.wm-tool-btn');
     if (toolBtn) {
       toolState.activeTool = toolBtn.dataset.tool;
@@ -201,35 +205,46 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     });
   });
 
-  // --- Dragging Logic ---
+  // --- Dragging & Toggling Logic ---
   const handle = shadowRoot.querySelector('.wm-toolbar-handle');
   let isDragging = false;
+  let hasDragged = false;
   let dragOffset = { x: 0, y: 0 };
 
-  handle.addEventListener('mousedown', (e) => {
+  containerElement.addEventListener('mousedown', (e) => {
+    // Drag handle check
+    if (!e.target.closest('.wm-toolbar-handle')) return;
+    
     isDragging = true;
-    const rect = toolbarDiv.getBoundingClientRect();
+    hasDragged = false;
+    const rect = containerElement.getBoundingClientRect();
     dragOffset.x = e.clientX - rect.left;
     dragOffset.y = e.clientY - rect.top;
   });
 
   document.addEventListener('mousemove', (e) => {
     if (!isDragging) return;
-    resetCollapseTimer(); // Keep expanded while dragging
+    hasDragged = true;
     let newX = e.clientX - dragOffset.x;
     let newY = e.clientY - dragOffset.y;
     
     // Clamp to viewport
-    const rect = toolbarDiv.getBoundingClientRect();
+    const rect = containerElement.getBoundingClientRect();
     newX = Math.max(0, Math.min(newX, window.innerWidth - rect.width));
     newY = Math.max(0, Math.min(newY, window.innerHeight - rect.height));
     
-    toolbarDiv.style.left = `${newX}px`;
-    toolbarDiv.style.top = `${newY}px`;
-    toolbarDiv.style.right = 'auto'; // Disable possible right alignment on mobile
+    containerElement.style.left = `${newX}px`;
+    containerElement.style.top = `${newY}px`;
+    containerElement.style.bottom = 'auto';
+    containerElement.style.right = 'auto';
+    containerElement.style.transform = 'none'; // Overrides initial translateX(-50%)
   });
 
   document.addEventListener('mouseup', () => {
+    if (isDragging && !hasDragged) {
+      // Treat as click: toggle toolbar
+      toolbarDiv.classList.toggle('hidden');
+    }
     isDragging = false;
   });
 
@@ -244,8 +259,8 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   })();
 
   return {
-    show: () => { toolbarDiv.classList.remove('hidden'); resetCollapseTimer(); },
-    hide: () => { toolbarDiv.classList.add('hidden'); },
+    show: () => { containerElement.style.display = 'flex'; },
+    hide: () => { containerElement.style.display = 'none'; },
     setActiveTool: (tool) => {
       toolState.activeTool = tool;
       updateUIFromState();
@@ -256,6 +271,7 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
       updateUIFromState();
       syncToolState();
     },
+    getToolState: () => toolState,
     element: toolbarDiv,
     onToggle
   };

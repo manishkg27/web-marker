@@ -69,6 +69,25 @@
   shadow.addEventListener('wm-surface-changed', (e) => {
     const { name, engine } = e.detail;
     setActiveSurface(name, engine);
+    // sync tool state to the newly active engine
+    if (toolbar && toolbar.getToolState) {
+      engine.setToolState(toolbar.getToolState());
+    }
+  });
+  
+  shadow.addEventListener('wm-tool-changed', (e) => {
+    const state = e.detail;
+    if (overlayEngine) overlayEngine.setToolState(state);
+    if (blankPages) {
+      for(let i=0; i<5; i++) {
+        const eng = blankPages.getEngine(i);
+        if (eng) eng.setToolState(state);
+      }
+    }
+    if (sidePanel) {
+      const eng = sidePanel.getEngine();
+      if (eng) eng.setToolState(state);
+    }
   });
   
   // 9. Active surface tracking via pointerdown on canvases
@@ -133,6 +152,7 @@
       if (!isVisible) {
         root.style.display = '';
         toolbar.show();
+        overlayEngine.resize();
       } else if (!drawingEnabled) {
         // Hide everything if we are disabling drawing completely via the extension icon
         root.style.display = 'none';

@@ -62,104 +62,60 @@
 }
 
 /* ============================================================
-   TOOLBAR — Floating Vertical Pill
+   TOOLBAR — Floating Grid
    ============================================================ */
-.wm-toolbar {
+.wm-toolbar-container {
   position: fixed;
-  bottom: 30px;
-  top: auto;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 20px;
+  left: 20px;
   z-index: 2147483646;
   display: flex;
-  flex-direction: row;
+  flex-direction: column;
+  gap: 8px;
+  pointer-events: auto;
   align-items: center;
-  gap: 4px;
-  padding: 6px 10px;
-  background: var(--wm-bg);
-  backdrop-filter: blur(20px) saturate(1.5);
-  -webkit-backdrop-filter: blur(20px) saturate(1.5);
-  border: 1px solid var(--wm-border);
-  border-radius: var(--wm-radius-pill);
-  box-shadow: var(--wm-shadow);
-  transition: opacity var(--wm-transition), transform var(--wm-transition), width var(--wm-transition-slow);
-  user-select: none;
-  will-change: transform;
 }
 
-.wm-toolbar.collapsed {
-  padding: 0;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  overflow: hidden;
-  cursor: pointer;
-}
-
-.wm-toolbar.collapsed > *:not(.wm-toolbar-handle) {
-  display: none;
-}
-
-.wm-toolbar.collapsed .wm-toolbar-handle {
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--wm-accent);
-  color: white;
-  font-size: 18px;
-  padding: 0;
-}
-
-.wm-toolbar.hidden {
-  opacity: 0;
-  pointer-events: none;
-  transform: translate(-50%, 60px);
-}
-
-/* --- Drag Handle --- */
 .wm-toolbar-handle {
-  padding: 4px 6px;
-  text-align: center;
-  cursor: grab;
-  color: var(--wm-text-dim);
-  font-size: 14px;
-  letter-spacing: 1px;
-  border-radius: var(--wm-radius-sm);
-  transition: background var(--wm-transition), color var(--wm-transition);
+  width: 44px;
+  height: 44px;
+  background: #ffffff;
+  border-radius: var(--wm-radius-md);
   display: flex;
   align-items: center;
   justify-content: center;
-}
-
-.wm-toolbar-handle:hover {
-  background: var(--wm-surface);
-  color: var(--wm-text);
+  cursor: grab;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  color: #4a4a5a;
 }
 
 .wm-toolbar-handle:active {
   cursor: grabbing;
 }
 
-/* --- Divider --- */
-.wm-toolbar-divider {
-  width: 1px;
-  height: 24px;
-  background: var(--wm-border);
-  margin: 0 4px;
+.wm-toolbar {
+  background: #ffffff;
+  border-radius: var(--wm-radius-lg);
+  padding: 12px;
+  box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  user-select: none;
+  color: #4a4a5a;
+}
+
+.wm-toolbar.hidden {
+  display: none;
+}
+
+.wm-toolbar-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 34px);
+  gap: 8px;
 }
 
 /* --- Tool Buttons --- */
-.wm-toolbar-tools,
-.wm-toolbar-actions,
-.wm-toolbar-toggles {
-  display: flex;
-  flex-direction: row;
-  gap: 2px;
-}
-
 .wm-tool-btn,
 .wm-action-btn,
 .wm-toggle-btn {
@@ -172,7 +128,7 @@
   border: none;
   border-radius: var(--wm-radius-sm);
   background: transparent;
-  color: var(--wm-text-dim);
+  color: #666677;
   cursor: pointer;
   transition: all var(--wm-transition);
   outline: none;
@@ -181,8 +137,8 @@
 .wm-tool-btn:hover,
 .wm-action-btn:hover,
 .wm-toggle-btn:hover {
-  background: var(--wm-surface-hover);
-  color: var(--wm-text);
+  background: #f0f0f5;
+  color: #111122;
 }
 
 .wm-tool-btn:active,
@@ -242,31 +198,53 @@
   opacity: 1;
 }
 
-/* --- Color Section --- */
-.wm-toolbar-options {
+/* --- Color Section & Popover --- */
+.wm-color-picker-wrapper {
+  position: relative;
   display: flex;
-  flex-direction: row;
-  gap: 12px;
   align-items: center;
-  padding: 0 4px;
+  justify-content: center;
 }
 
-.wm-color-section {
+.wm-color-btn {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  border: 1px solid rgba(255,255,255,0.1);
+  cursor: pointer;
+}
+
+.wm-color-popover {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  margin-top: 8px;
+  background: #ffffff;
+  border-radius: var(--wm-radius-sm);
+  box-shadow: var(--wm-shadow-lg);
+  padding: 12px;
   display: flex;
-  flex-direction: row;
-  align-items: center;
-  gap: 4px;
+  flex-direction: column;
+  gap: 12px;
+  z-index: 10;
+  width: max-content;
+  border: 1px solid var(--wm-border);
+  color: #4a4a5a;
+}
+
+.wm-color-popover.hidden {
+  display: none;
 }
 
 .wm-color-swatches {
-  display: flex;
-  flex-direction: row;
-  gap: 4px;
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 6px;
 }
 
 .wm-swatch {
-  width: 18px;
-  height: 18px;
+  width: 20px;
+  height: 20px;
   border-radius: 50%;
   border: 2px solid transparent;
   cursor: pointer;
@@ -285,9 +263,21 @@
   transform: scale(1.15);
 }
 
+.wm-custom-color-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.wm-custom-color-row label {
+  font-size: 11px;
+  color: #666677;
+}
+
 .wm-color-custom {
-  width: 28px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
   border: 1px solid var(--wm-border);
   border-radius: 4px;
   cursor: pointer;
@@ -307,16 +297,9 @@
 /* --- Sliders --- */
 .wm-slider-row {
   display: flex;
-  flex-direction: row;
   align-items: center;
-  gap: 6px;
-}
-
-.wm-slider-label {
-  font-size: 9px;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: var(--wm-text-muted);
+  justify-content: center;
+  width: 100%;
 }
 
 .wm-slider {
@@ -365,6 +348,7 @@
   margin-top: 20px;
   z-index: 2147483638;
   display: none;
+  pointer-events: auto;
 }
 
 .wm-page {
@@ -495,6 +479,7 @@
   transform: translateX(100%);
   transition: transform var(--wm-transition-slow);
   will-change: transform;
+  pointer-events: auto;
 }
 
 .wm-side-panel.visible {
@@ -670,6 +655,7 @@
   outline: none;
   box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--wm-border);
   transition: border-color var(--wm-transition);
+  pointer-events: auto;
 }
 
 .wm-text-input:focus {
@@ -699,9 +685,7 @@
   50%      { box-shadow: 0 0 0 6px transparent; }
 }
 
-.wm-toolbar:not(.collapsed):not(.hidden) {
-  animation: wm-slide-in-left 300ms ease forwards;
-}
+
 
 .wm-page.active {
   animation: wm-fade-in 250ms ease forwards;
@@ -735,17 +719,11 @@
    RESPONSIVE
    ============================================================ */
 @media (max-width: 768px) {
-  .wm-toolbar {
-    flex-wrap: wrap;
-    border-radius: var(--wm-radius-md);
-    width: 90%;
-    justify-content: center;
+  .wm-toolbar-container {
+    top: auto;
+    bottom: 20px;
+    left: 10px;
   }
-
-  .wm-toolbar-divider {
-    display: none;
-  }
-
   .wm-side-panel {
     width: 100vw;
     --wm-panel-width: 100vw;
