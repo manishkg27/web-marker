@@ -1,0 +1,753 @@
+/* ============================================================
+   Web Marker — Design System (Shadow DOM Scoped)
+   ============================================================
+   All styles are injected into a closed Shadow DOM.
+   No CSS conflicts with host pages.
+   ============================================================ */
+
+/* --- CSS Custom Properties --- */
+:host {
+  --wm-bg: rgba(22, 22, 35, 0.92);
+  --wm-bg-solid: #161623;
+  --wm-surface: rgba(40, 40, 60, 0.8);
+  --wm-surface-hover: rgba(60, 60, 85, 0.9);
+  --wm-surface-active: rgba(79, 140, 255, 0.25);
+  --wm-accent: #4f8cff;
+  --wm-accent-glow: rgba(79, 140, 255, 0.4);
+  --wm-accent-bright: #70a5ff;
+  --wm-danger: #ff4466;
+  --wm-success: #33cc66;
+  --wm-warning: #ffcc00;
+  --wm-text: #e8e8f0;
+  --wm-text-dim: rgba(232, 232, 240, 0.5);
+  --wm-text-muted: rgba(232, 232, 240, 0.35);
+  --wm-border: rgba(255, 255, 255, 0.08);
+  --wm-border-accent: rgba(79, 140, 255, 0.3);
+  --wm-radius-sm: 8px;
+  --wm-radius-md: 12px;
+  --wm-radius-lg: 16px;
+  --wm-radius-pill: 50px;
+  --wm-shadow: 0 8px 32px rgba(0, 0, 0, 0.4), 0 2px 8px rgba(0, 0, 0, 0.2);
+  --wm-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.5), 0 4px 12px rgba(0, 0, 0, 0.3);
+  --wm-transition: 200ms ease;
+  --wm-transition-slow: 300ms ease;
+  --wm-panel-width: 320px;
+  --wm-font: 'Segoe UI', 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+
+  font-family: var(--wm-font);
+  color: var(--wm-text);
+  font-size: 13px;
+  line-height: 1.4;
+  box-sizing: border-box;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+/* ============================================================
+   OVERLAY CANVAS
+   ============================================================ */
+.wm-overlay-canvas {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
+  z-index: 2147483640;
+  pointer-events: none;
+  cursor: crosshair;
+}
+
+/* ============================================================
+   TOOLBAR — Floating Vertical Pill
+   ============================================================ */
+.wm-toolbar {
+  position: fixed;
+  bottom: 30px;
+  top: auto;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 2147483646;
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 10px;
+  background: var(--wm-bg);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border: 1px solid var(--wm-border);
+  border-radius: var(--wm-radius-pill);
+  box-shadow: var(--wm-shadow);
+  transition: opacity var(--wm-transition), transform var(--wm-transition), width var(--wm-transition-slow);
+  user-select: none;
+  will-change: transform;
+}
+
+.wm-toolbar.collapsed {
+  padding: 0;
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  overflow: hidden;
+  cursor: pointer;
+}
+
+.wm-toolbar.collapsed > *:not(.wm-toolbar-handle) {
+  display: none;
+}
+
+.wm-toolbar.collapsed .wm-toolbar-handle {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--wm-accent);
+  color: white;
+  font-size: 18px;
+  padding: 0;
+}
+
+.wm-toolbar.hidden {
+  opacity: 0;
+  pointer-events: none;
+  transform: translate(-50%, 60px);
+}
+
+/* --- Drag Handle --- */
+.wm-toolbar-handle {
+  padding: 4px 6px;
+  text-align: center;
+  cursor: grab;
+  color: var(--wm-text-dim);
+  font-size: 14px;
+  letter-spacing: 1px;
+  border-radius: var(--wm-radius-sm);
+  transition: background var(--wm-transition), color var(--wm-transition);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.wm-toolbar-handle:hover {
+  background: var(--wm-surface);
+  color: var(--wm-text);
+}
+
+.wm-toolbar-handle:active {
+  cursor: grabbing;
+}
+
+/* --- Divider --- */
+.wm-toolbar-divider {
+  width: 1px;
+  height: 24px;
+  background: var(--wm-border);
+  margin: 0 4px;
+}
+
+/* --- Tool Buttons --- */
+.wm-toolbar-tools,
+.wm-toolbar-actions,
+.wm-toolbar-toggles {
+  display: flex;
+  flex-direction: row;
+  gap: 2px;
+}
+
+.wm-tool-btn,
+.wm-action-btn,
+.wm-toggle-btn {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border: none;
+  border-radius: var(--wm-radius-sm);
+  background: transparent;
+  color: var(--wm-text-dim);
+  cursor: pointer;
+  transition: all var(--wm-transition);
+  outline: none;
+}
+
+.wm-tool-btn:hover,
+.wm-action-btn:hover,
+.wm-toggle-btn:hover {
+  background: var(--wm-surface-hover);
+  color: var(--wm-text);
+}
+
+.wm-tool-btn:active,
+.wm-action-btn:active,
+.wm-toggle-btn:active {
+  transform: scale(0.92);
+}
+
+.wm-tool-btn.active {
+  background: var(--wm-surface-active);
+  color: var(--wm-accent-bright);
+  box-shadow: inset 0 0 0 1px var(--wm-border-accent), 0 0 12px var(--wm-accent-glow);
+}
+
+.wm-toggle-btn.active {
+  color: var(--wm-accent-bright);
+}
+
+.wm-tool-btn svg,
+.wm-action-btn svg,
+.wm-toggle-btn svg {
+  width: 18px;
+  height: 18px;
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* Tooltip */
+.wm-tool-btn::after,
+.wm-action-btn::after,
+.wm-toggle-btn::after {
+  content: attr(title);
+  position: absolute;
+  left: calc(100% + 10px);
+  top: 50%;
+  transform: translateY(-50%);
+  padding: 4px 10px;
+  background: var(--wm-bg-solid);
+  color: var(--wm-text);
+  font-size: 11px;
+  white-space: nowrap;
+  border-radius: 6px;
+  border: 1px solid var(--wm-border);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 150ms ease;
+  z-index: 10;
+}
+
+.wm-tool-btn:hover::after,
+.wm-action-btn:hover::after,
+.wm-toggle-btn:hover::after {
+  opacity: 1;
+}
+
+/* --- Color Section --- */
+.wm-toolbar-options {
+  display: flex;
+  flex-direction: row;
+  gap: 12px;
+  align-items: center;
+  padding: 0 4px;
+}
+
+.wm-color-section {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 4px;
+}
+
+.wm-color-swatches {
+  display: flex;
+  flex-direction: row;
+  gap: 4px;
+}
+
+.wm-swatch {
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--wm-transition);
+  outline: none;
+}
+
+.wm-swatch:hover {
+  transform: scale(1.2);
+  border-color: rgba(255, 255, 255, 0.3);
+}
+
+.wm-swatch.active {
+  border-color: var(--wm-accent);
+  box-shadow: 0 0 8px var(--wm-accent-glow);
+  transform: scale(1.15);
+}
+
+.wm-color-custom {
+  width: 28px;
+  height: 22px;
+  border: 1px solid var(--wm-border);
+  border-radius: 4px;
+  cursor: pointer;
+  background: transparent;
+  padding: 0;
+}
+
+.wm-color-custom::-webkit-color-swatch-wrapper {
+  padding: 1px;
+}
+
+.wm-color-custom::-webkit-color-swatch {
+  border: none;
+  border-radius: 3px;
+}
+
+/* --- Sliders --- */
+.wm-slider-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 6px;
+}
+
+.wm-slider-label {
+  font-size: 9px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: var(--wm-text-muted);
+}
+
+.wm-slider {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 32px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--wm-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.wm-slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--wm-accent);
+  border: none;
+  cursor: pointer;
+  transition: transform var(--wm-transition);
+  box-shadow: 0 0 6px var(--wm-accent-glow);
+}
+
+.wm-slider::-webkit-slider-thumb:hover {
+  transform: scale(1.3);
+}
+
+.wm-slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--wm-accent);
+  border: none;
+  cursor: pointer;
+}
+
+/* ============================================================
+   BLANK PAGES
+   ============================================================ */
+.wm-blank-pages-container {
+  position: relative;
+  width: 100%;
+  margin-top: 20px;
+  z-index: 2147483638;
+  display: none;
+}
+
+.wm-page {
+  display: none;
+  flex-direction: column;
+  width: 100%;
+  min-height: 100vh;
+  background: #ffffff;
+  border-radius: var(--wm-radius-md) var(--wm-radius-md) 0 0;
+  overflow: hidden;
+  box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
+}
+
+.wm-page.active {
+  display: flex;
+}
+
+.wm-page-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 20px;
+  background: var(--wm-bg);
+  border-bottom: 1px solid var(--wm-border);
+  color: var(--wm-text);
+  font-size: 13px;
+  font-weight: 500;
+}
+
+.wm-page-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.wm-page-actions button {
+  padding: 5px 14px;
+  border: 1px solid var(--wm-border);
+  border-radius: var(--wm-radius-sm);
+  background: var(--wm-surface);
+  color: var(--wm-text);
+  font-size: 12px;
+  cursor: pointer;
+  transition: all var(--wm-transition);
+  font-family: var(--wm-font);
+}
+
+.wm-page-actions button:hover {
+  background: var(--wm-surface-hover);
+  border-color: var(--wm-accent);
+}
+
+.wm-blank-canvas {
+  width: 100%;
+  height: calc(100vh - 48px);
+  display: block;
+  cursor: crosshair;
+  background: #ffffff;
+}
+
+/* --- Page Navigation Dots --- */
+.wm-page-nav {
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  padding: 16px;
+  background: var(--wm-bg);
+  border-top: 1px solid var(--wm-border);
+}
+
+.wm-dot {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 2px solid var(--wm-text-dim);
+  background: transparent;
+  cursor: pointer;
+  transition: all var(--wm-transition);
+  outline: none;
+  padding: 0;
+}
+
+.wm-dot:hover {
+  border-color: var(--wm-accent);
+  transform: scale(1.2);
+}
+
+.wm-dot.active {
+  background: var(--wm-accent);
+  border-color: var(--wm-accent);
+  box-shadow: 0 0 10px var(--wm-accent-glow);
+}
+
+/* ============================================================
+   SIDE PANEL
+   ============================================================ */
+.wm-side-panel-ghost {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: 4px;
+  height: 100vh;
+  background: linear-gradient(180deg, var(--wm-accent), var(--wm-accent-bright));
+  z-index: 2147483644;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity var(--wm-transition);
+  border-radius: 2px 0 0 2px;
+}
+
+.wm-side-panel-ghost.visible {
+  opacity: 0.6;
+}
+
+.wm-side-panel {
+  position: fixed;
+  top: 0;
+  right: 0;
+  width: var(--wm-panel-width);
+  height: 100vh;
+  z-index: 2147483645;
+  display: flex;
+  flex-direction: column;
+  background: var(--wm-bg);
+  backdrop-filter: blur(20px) saturate(1.5);
+  -webkit-backdrop-filter: blur(20px) saturate(1.5);
+  border-left: 1px solid var(--wm-border);
+  box-shadow: -8px 0 32px rgba(0, 0, 0, 0.3);
+  transform: translateX(100%);
+  transition: transform var(--wm-transition-slow);
+  will-change: transform;
+}
+
+.wm-side-panel.visible {
+  transform: translateX(0);
+}
+
+.wm-side-panel-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--wm-border);
+}
+
+.wm-side-panel-title {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--wm-text);
+  letter-spacing: 0.3px;
+}
+
+.wm-side-panel-controls {
+  display: flex;
+  gap: 6px;
+}
+
+.wm-side-panel-controls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: none;
+  border-radius: var(--wm-radius-sm);
+  background: transparent;
+  color: var(--wm-text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--wm-transition);
+  outline: none;
+}
+
+.wm-side-panel-controls button:hover {
+  background: var(--wm-surface-hover);
+  color: var(--wm-text);
+}
+
+.wm-pin-btn.pinned {
+  color: var(--wm-accent-bright);
+  background: var(--wm-surface-active);
+}
+
+/* --- Mini Toolbar --- */
+.wm-mini-toolbar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 10px 12px;
+  border-bottom: 1px solid var(--wm-border);
+  flex-wrap: wrap;
+}
+
+.wm-mini-colors {
+  display: flex;
+  gap: 4px;
+}
+
+.wm-mini-swatch {
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: all var(--wm-transition);
+  outline: none;
+  padding: 0;
+}
+
+.wm-mini-swatch:hover {
+  transform: scale(1.2);
+}
+
+.wm-mini-swatch.active {
+  border-color: var(--wm-accent);
+  box-shadow: 0 0 6px var(--wm-accent-glow);
+}
+
+.wm-mini-size {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 50px;
+  height: 3px;
+  border-radius: 2px;
+  background: var(--wm-surface);
+  outline: none;
+  cursor: pointer;
+}
+
+.wm-mini-size::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--wm-accent);
+  border: none;
+  cursor: pointer;
+}
+
+.wm-mini-size::-moz-range-thumb {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: var(--wm-accent);
+  border: none;
+}
+
+.wm-mini-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 26px;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--wm-text-dim);
+  cursor: pointer;
+  font-size: 14px;
+  transition: all var(--wm-transition);
+  outline: none;
+  font-family: var(--wm-font);
+}
+
+.wm-mini-btn:hover {
+  background: var(--wm-surface-hover);
+  color: var(--wm-text);
+}
+
+.wm-mini-btn:active {
+  transform: scale(0.9);
+}
+
+/* --- Side Panel Canvas --- */
+.wm-side-canvas {
+  flex: 1;
+  width: 100%;
+  display: block;
+  cursor: crosshair;
+  background: #ffffff;
+  border-radius: 0;
+}
+
+/* ============================================================
+   TEXT INPUT
+   ============================================================ */
+.wm-text-input {
+  position: fixed;
+  z-index: 2147483647;
+  min-width: 120px;
+  min-height: 36px;
+  max-width: 400px;
+  padding: 8px 12px;
+  border: 2px solid var(--wm-accent);
+  border-radius: var(--wm-radius-sm);
+  background: rgba(22, 22, 35, 0.95);
+  backdrop-filter: blur(8px);
+  color: var(--wm-text);
+  font-family: var(--wm-font);
+  font-size: 14px;
+  line-height: 1.5;
+  resize: both;
+  outline: none;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 0 1px var(--wm-border);
+  transition: border-color var(--wm-transition);
+}
+
+.wm-text-input:focus {
+  border-color: var(--wm-accent-bright);
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.3), 0 0 12px var(--wm-accent-glow);
+}
+
+.wm-text-input::placeholder {
+  color: var(--wm-text-muted);
+}
+
+/* ============================================================
+   ANIMATIONS
+   ============================================================ */
+@keyframes wm-fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes wm-slide-in-left {
+  from { opacity: 0; transform: translateX(-20px); }
+  to   { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes wm-pulse {
+  0%, 100% { box-shadow: 0 0 0 0 var(--wm-accent-glow); }
+  50%      { box-shadow: 0 0 0 6px transparent; }
+}
+
+.wm-toolbar:not(.collapsed):not(.hidden) {
+  animation: wm-slide-in-left 300ms ease forwards;
+}
+
+.wm-page.active {
+  animation: wm-fade-in 250ms ease forwards;
+}
+
+.wm-dot.active {
+  animation: wm-pulse 2s ease infinite;
+}
+
+/* ============================================================
+   SCROLLBAR (for side panel)
+   ============================================================ */
+::-webkit-scrollbar {
+  width: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: var(--wm-surface);
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: var(--wm-surface-hover);
+}
+
+/* ============================================================
+   RESPONSIVE
+   ============================================================ */
+@media (max-width: 768px) {
+  .wm-toolbar {
+    flex-wrap: wrap;
+    border-radius: var(--wm-radius-md);
+    width: 90%;
+    justify-content: center;
+  }
+
+  .wm-toolbar-divider {
+    display: none;
+  }
+
+  .wm-side-panel {
+    width: 100vw;
+    --wm-panel-width: 100vw;
+  }
+}

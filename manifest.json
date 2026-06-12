@@ -1,0 +1,23 @@
+{
+  "manifest_version": 3,
+  "name": "Web Marker",
+  "version": "1.0.0",
+  "description": "Draw, annotate, and take notes on any webpage with smooth pen, highlighter, eraser, arrow, and text tools.",
+  "icons": {
+    "16": "icon16.png",
+    "48": "icon48.png",
+    "128": "icon128.png"
+  },
+  "permissions": ["tabs", "scripting", "storage"],
+  "action": {},
+  "background": { "service_worker": "background.js" },
+  "content_scripts": [{
+    "matches": ["<all_urls>"],
+    "js": ["canvas.js", "toolbar.js", "blankPages.js", "sidePanel.js", "content.js"],
+    "run_at": "document_idle"
+  }],
+  "web_accessible_resources": [{
+    "resources": ["styles.css"],
+    "matches": ["<all_urls>"]
+  }]
+}
