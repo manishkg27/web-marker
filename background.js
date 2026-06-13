@@ -35,29 +35,45 @@ function createTabData() {
 /**
  * Return existing TabData or create + cache a new default.
  * @param {number} tabId
- * @returns {object} TabData
+ * @returns {Promise<object>} TabData
  */
-function getTabData(tabId) {
+async function getTabData(tabId) {
   if (!tabStore.has(tabId)) {
-    tabStore.set(tabId, createTabData());
+    const key = `tabData_${tabId}`;
+    const result = await chrome.storage.session.get(key);
+    if (result[key]) {
+      tabStore.set(tabId, result[key]);
+    } else {
+      tabStore.set(tabId, createTabData());
+    }
   }
   return tabStore.get(tabId);
+}
+
+/**
+ * Save current TabData to session storage.
+ * @param {number} tabId
+ */
+async function saveTabData(tabId) {
+  if (tabStore.has(tabId)) {
+    const key = `tabData_${tabId}`;
+    await chrome.storage.session.set({ [key]: tabStore.get(tabId) });
+  }
 }
 
 /**
  * Return the StrokeCollection for a named surface.
  * @param {number} tabId
  * @param {string} surfaceId  e.g. 'overlay', 'blankPage_0' … 'blankPage_4', 'sidePanel'
- * @returns {object} StrokeCollection
+ * @returns {Promise<object>} StrokeCollection
  */
-function getSurface(tabId, surfaceId) {
-  const tabData = getTabData(tabId);
+async function getSurface(tabId, surfaceId) {
+  const tabData = await getTabData(tabId);
   if (!tabData[surfaceId]) {
     tabData[surfaceId] = createStrokeCollection();
   }
   return tabData[surfaceId];
 }
-
 // ── Deep-copy utility ───────────────────────────────────────
 
 function deepCopy(arr) {
@@ -66,12 +82,17 @@ function deepCopy(arr) {
 
 // ── Undo / Redo snapshot helpers ────────────────────────────
 
+const MAX_UNDO_STATES = 30;
+
 /**
  * Push a snapshot of current strokes onto undoStack and clear redoStack.
  * Used before mutating strokes (ADD_STROKE, CLEAR).
  */
 function snapshotUndo(collection) {
   collection.undoStack.push(deepCopy(collection.strokes));
+  if (collection.undoStack.length > MAX_UNDO_STATES) {
+    collection.undoStack.shift();
+  }
   collection.redoStack = [];
 }
 
@@ -81,6 +102,9 @@ function snapshotUndo(collection) {
  */
 function snapshotForUndo(collection) {
   collection.undoStack.push(deepCopy(collection.strokes));
+  if (collection.undoStack.length > MAX_UNDO_STATES) {
+    collection.undoStack.shift();
+  }
 }
 
 // ── Message handler (single listener, async IIFE pattern) ───
@@ -97,9 +121,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── ADD_STROKE ────────────────────────────────────
         case 'ADD_STROKE': {
           const { surfaceId, stroke } = payload;
-          const collection = getSurface(tabId, surfaceId);
+          const collection = await getSurface(tabId, surfaceId);
           snapshotUndo(collection);
           collection.strokes.push(stroke);
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { strokes: collection.strokes } });
           break;
         }
@@ -107,7 +132,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── UNDO ──────────────────────────────────────────
         case 'UNDO': {
           const { surfaceId } = payload;
-          const collection = getSurface(tabId, surfaceId);
+          const collection = await getSurface(tabId, surfaceId);
 
           if (collection.undoStack.length === 0) {
             sendResponse({ success: true, data: { strokes: collection.strokes } });
@@ -115,7 +140,11 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
           }
 
           collection.redoStack.push(deepCopy(collection.strokes));
+          if (collection.redoStack.length > MAX_UNDO_STATES) {
+            collection.redoStack.shift();
+          }
           collection.strokes = collection.undoStack.pop();
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { strokes: collection.strokes } });
           break;
         }
@@ -123,7 +152,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── REDO ──────────────────────────────────────────
         case 'REDO': {
           const { surfaceId } = payload;
-          const collection = getSurface(tabId, surfaceId);
+          const collection = await getSurface(tabId, surfaceId);
 
           if (collection.redoStack.length === 0) {
             sendResponse({ success: true, data: { strokes: collection.strokes } });
@@ -132,6 +161,7 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
 
           snapshotForUndo(collection);
           collection.strokes = collection.redoStack.pop();
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { strokes: collection.strokes } });
           break;
         }
@@ -139,16 +169,17 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── CLEAR ─────────────────────────────────────────
         case 'CLEAR': {
           const { surfaceId } = payload;
-          const collection = getSurface(tabId, surfaceId);
+          const collection = await getSurface(tabId, surfaceId);
           snapshotUndo(collection);
           collection.strokes = [];
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { strokes: collection.strokes } });
           break;
         }
 
         // ── GET_STATE ─────────────────────────────────────
         case 'GET_STATE': {
-          const tabData = getTabData(tabId);
+          const tabData = await getTabData(tabId);
           sendResponse({ success: true, data: tabData });
           break;
         }
@@ -178,8 +209,9 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── SET_PAGE ──────────────────────────────────────
         case 'SET_PAGE': {
           const { index } = payload;
-          const tabData = getTabData(tabId);
+          const tabData = await getTabData(tabId);
           tabData.activePageIndex = index;
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { index } });
           break;
         }
@@ -205,9 +237,10 @@ chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
         // ── ERASE_STROKE ──────────────────────────────────
         case 'ERASE_STROKE': {
           const { surfaceId, strokeIndex } = payload;
-          const collection = getSurface(tabId, surfaceId);
+          const collection = await getSurface(tabId, surfaceId);
           snapshotUndo(collection);
           collection.strokes.splice(strokeIndex, 1);
+          await saveTabData(tabId);
           sendResponse({ success: true, data: { strokes: collection.strokes } });
           break;
         }
@@ -241,4 +274,5 @@ chrome.action.onClicked.addListener(async (tab) => {
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabStore.delete(tabId);
   chrome.storage.session.remove(`toolState_${tabId}`);
+  chrome.storage.session.remove(`tabData_${tabId}`);
 });

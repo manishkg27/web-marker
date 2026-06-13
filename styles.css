@@ -356,7 +356,7 @@
   flex-direction: column;
   width: 100%;
   min-height: 100vh;
-  background: #ffffff;
+  background: var(--wm-bg-solid);
   border-radius: var(--wm-radius-md) var(--wm-radius-md) 0 0;
   overflow: hidden;
   box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.15);
@@ -405,7 +405,7 @@
   height: calc(100vh - 48px);
   display: block;
   cursor: crosshair;
-  background: #ffffff;
+  background: var(--wm-bg-solid);
 }
 
 /* --- Page Navigation Dots --- */
@@ -460,6 +460,22 @@
 
 .wm-side-panel-ghost.visible {
   opacity: 0.6;
+}
+
+.wm-panel-resizer {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 6px;
+  height: 100%;
+  cursor: ew-resize;
+  z-index: 10;
+  background: transparent;
+  transition: background var(--wm-transition);
+}
+
+.wm-panel-resizer:hover, .wm-panel-resizer.active {
+  background: var(--wm-accent);
 }
 
 .wm-side-panel {
@@ -629,7 +645,7 @@
   width: 100%;
   display: block;
   cursor: crosshair;
-  background: #ffffff;
+  background: transparent;
   border-radius: 0;
 }
 

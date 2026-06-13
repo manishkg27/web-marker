@@ -366,7 +366,7 @@ class CanvasEngine {
       this._drawArrow(ctx, points, size);
     } else if (tool === 'text') {
       // Create multiline support
-      const lines = (stroke.text || '').split('\\n');
+      const lines = (stroke.text || '').split('\n');
       let yOffset = this._ty(points[0].y);
       for (const line of lines) {
         ctx.fillText(line, this._tx(points[0].x), yOffset);

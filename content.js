@@ -65,6 +65,20 @@
     sidePanel.toggle();
   });
 
+  shadow.addEventListener('wm-add-space', () => {
+    let spacer = document.getElementById('wm-scroll-spacer');
+    if (!spacer) {
+      spacer = document.createElement('div');
+      spacer.id = 'wm-scroll-spacer';
+      spacer.style.cssText = 'height: 100vh; width: 100%; display: block; clear: both; background: transparent; pointer-events: none; margin: 0; padding: 0;';
+      document.body.appendChild(spacer);
+    } else {
+      const currentHeight = parseInt(spacer.style.height || '100');
+      spacer.style.height = `${currentHeight + 100}vh`;
+    }
+    window.scrollBy({ top: 300, behavior: 'smooth' });
+  });
+
   // Track surface changes from submodules
   shadow.addEventListener('wm-surface-changed', (e) => {
     const { name, engine } = e.detail;

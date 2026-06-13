@@ -2,6 +2,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
   const html = `
     <div class="wm-side-panel-ghost" id="wm-side-panel-ghost"></div>
     <div class="wm-side-panel" id="wm-side-panel">
+      <div class="wm-panel-resizer" id="wm-panel-resizer"></div>
       <div class="wm-side-panel-header">
         <span class="wm-side-panel-title">Notes</span>
         <div class="wm-side-panel-controls">
@@ -20,17 +21,49 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
 
   const ghost = shadowRoot.getElementById('wm-side-panel-ghost');
   const panel = shadowRoot.getElementById('wm-side-panel');
+  const resizer = shadowRoot.getElementById('wm-panel-resizer');
   const canvas = shadowRoot.getElementById('wm-side-canvas');
   const pinBtn = shadowRoot.getElementById('wm-pin-btn');
   const closeBtn = shadowRoot.getElementById('wm-close-btn');
 
   let isPinned = false;
   let isPanelVisible = false;
+  let isResizing = false;
+  let currentWidth = 320;
 
   const engine = new window.CanvasEngine(canvas, 'sidePanel', { scrollAware: false });
 
+  resizer.addEventListener('mousedown', (e) => {
+    isResizing = true;
+    resizer.classList.add('active');
+    e.preventDefault();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isResizing) {
+      isResizing = false;
+      resizer.classList.remove('active');
+      engine.resize();
+      
+      if (isPinned) {
+        document.body.style.marginRight = `${currentWidth}px`;
+      }
+    }
+  });
+
   // --- Ghost indicator & Auto-slide logic ---
   document.addEventListener('mousemove', (e) => {
+    if (isResizing) {
+      let newWidth = window.innerWidth - e.clientX;
+      if (newWidth < 250) newWidth = 250;
+      if (newWidth > window.innerWidth * 0.8) newWidth = window.innerWidth * 0.8;
+      
+      currentWidth = newWidth;
+      panel.style.width = `${currentWidth}px`;
+      engine.resize();
+      return;
+    }
+
     if (isPanelVisible) return;
     
     // Within 30px: show ghost
@@ -55,7 +88,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     
     panel.style.transform = 'translateX(0)';
     if (isPinned) {
-      document.body.style.marginRight = '320px';
+      document.body.style.marginRight = `${currentWidth}px`;
     }
     
     // Resize engine after transition
@@ -90,7 +123,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     pinBtn.classList.toggle('active', isPinned);
     
     if (isPinned && isPanelVisible) {
-      document.body.style.marginRight = '320px';
+      document.body.style.marginRight = `${currentWidth}px`;
     } else {
       document.body.style.marginRight = '';
     }
