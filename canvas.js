@@ -17,6 +17,122 @@
 
 'use strict';
 
+const ToolRenderers = {
+  pen: {
+    incremental: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      
+      if (points.length === 1) {
+        const p = points[0];
+        const w = size * (p.pressure * 1.5 + 0.25);
+        ctx.beginPath();
+        ctx.arc(engine._tx(p.x), engine._ty(p.y), w / 2, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      } else {
+        const start = Math.max(1, points.length - 3);
+        ToolRenderers._drawSmoothCurve(engine, ctx, points, start, size, false);
+      }
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ToolRenderers._drawSmoothCurve(engine, ctx, points, 1, size, false);
+    }
+  },
+  highlighter: {
+    incremental: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = color;
+      
+      if (points.length === 1) {
+        const p = points[0];
+        ctx.beginPath();
+        ctx.arc(engine._tx(p.x), engine._ty(p.y), (size * 4) / 2, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      } else {
+        const start = Math.max(1, points.length - 3);
+        ToolRenderers._drawSmoothCurve(engine, ctx, points, start, size, true);
+      }
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalCompositeOperation = 'multiply';
+      ctx.globalAlpha = 0.35;
+      ctx.strokeStyle = color;
+      ToolRenderers._drawSmoothCurve(engine, ctx, points, 1, size, true);
+    }
+  },
+  arrow: {
+    incremental: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.restore();
+      engine.redrawAll();
+      ctx.save();
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = size;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      engine._drawArrow(ctx, points, size);
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ctx.fillStyle = color;
+      ctx.lineWidth = size;
+      engine._drawArrow(ctx, points, size);
+    }
+  },
+  text: {
+    incremental: (engine, ctx, stroke) => { /* none */ },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity, text } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.fillStyle = color;
+      ctx.font = `${size}px inherit`;
+      ctx.textBaseline = 'top';
+      const lines = (text || '').split('\n');
+      let yOffset = engine._ty(points[0].y);
+      for (const line of lines) {
+        ctx.fillText(line, engine._tx(points[0].x), yOffset);
+        yOffset += size * 1.2;
+      }
+    }
+  },
+  
+  _drawSmoothCurve: (engine, ctx, points, startIndex, size, isHighlighter) => {
+    for (let i = startIndex; i < points.length; i++) {
+      const p0 = points[i - 1];
+      const p1 = points[i];
+      const width = isHighlighter ? size * 4 : size * (p1.pressure * 1.5 + 0.25);
+
+      ctx.beginPath();
+      ctx.lineWidth = width;
+
+      if (i < points.length - 1) {
+        const p2 = points[i + 1];
+        const midX = (engine._tx(p1.x) + engine._tx(p2.x)) / 2;
+        const midY = (engine._ty(p1.y) + engine._ty(p2.y)) / 2;
+        ctx.moveTo(engine._tx(p0.x), engine._ty(p0.y));
+        ctx.quadraticCurveTo(engine._tx(p1.x), engine._ty(p1.y), midX, midY);
+      } else {
+        ctx.moveTo(engine._tx(p0.x), engine._ty(p0.y));
+        ctx.lineTo(engine._tx(p1.x), engine._ty(p1.y));
+      }
+      ctx.stroke();
+    }
+  }
+};
+
 class CanvasEngine {
   /**
    * @param {HTMLCanvasElement} canvasElement — the <canvas> DOM element (created by the caller)
@@ -29,6 +145,7 @@ class CanvasEngine {
     this.ctx = canvasElement.getContext('2d');
     this.surfaceId = surfaceId;
     this.scrollAware = options.scrollAware || false;
+    this.scrollContainer = options.scrollContainer || null;
 
     /** @type {object|null} In-progress stroke being drawn right now */
     this.currentStroke = null;
@@ -93,7 +210,8 @@ class CanvasEngine {
     // Scroll → redraw (overlay only, so strokes track document position)
     if (this.scrollAware) {
       this._scrollHandler = () => this.redrawAll();
-      window.addEventListener('scroll', this._scrollHandler, { passive: true });
+      const target = this.scrollContainer || window;
+      target.addEventListener('scroll', this._scrollHandler, { passive: true });
     }
 
     // Resize → recalculate DPI + redraw
@@ -116,8 +234,9 @@ class CanvasEngine {
     let y = e.clientY - rect.top;
 
     if (this.scrollAware) {
-      x += window.scrollX;
-      y += window.scrollY;
+      const target = this.scrollContainer || window;
+      x += target === window ? window.scrollX : target.scrollLeft;
+      y += target === window ? window.scrollY : target.scrollTop;
     }
 
     return { x, y, pressure: e.pressure || 0.5 };
@@ -127,14 +246,20 @@ class CanvasEngine {
    * Transform a stored x-coordinate back to canvas-local space for rendering.
    */
   _tx(x) {
-    return this.scrollAware ? x - window.scrollX : x;
+    if (!this.scrollAware) return x;
+    const target = this.scrollContainer || window;
+    const scrollX = target === window ? window.scrollX : target.scrollLeft;
+    return x - scrollX;
   }
 
   /**
    * Transform a stored y-coordinate back to canvas-local space for rendering.
    */
   _ty(y) {
-    return this.scrollAware ? y - window.scrollY : y;
+    if (!this.scrollAware) return y;
+    const target = this.scrollContainer || window;
+    const scrollY = target === window ? window.scrollY : target.scrollTop;
+    return y - scrollY;
   }
 
   // ---------------------------------------------------------------------------
@@ -249,77 +374,12 @@ class CanvasEngine {
 
     const ctx = this.ctx;
     ctx.save();
-
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (tool === 'highlighter') {
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = 0.35;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = size * 4;
-    } else if (tool === 'pen') {
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = color;
-    } else if (tool === 'arrow') {
-      // For arrows we redraw the full arrow each move so it follows the cursor
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = size;
-    }
-
-    if (tool === 'arrow') {
-      // Arrows are rendered from start → current end; need mini-clear first
-      // We do a full redraw for arrows since the line must update each frame
-      this.ctx.restore();
-      this.redrawAll();
-      ctx.save();
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = size;
-      ctx.lineCap = 'round';
-      ctx.lineJoin = 'round';
-      this._drawArrow(ctx, points, size);
-      ctx.restore();
-      return;
-    }
-
-    // pen / highlighter — draw only the newest segment(s) for performance
-    if (points.length === 1) {
-      // Single dot
-      const p = points[0];
-      const w = size * (p.pressure * 1.5 + 0.25);
-      ctx.beginPath();
-      ctx.arc(this._tx(p.x), this._ty(p.y), w / 2, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    } else {
-      // Draw the last couple of segments for a smooth incremental appearance
-      const start = Math.max(1, points.length - 3);
-      for (let i = start; i < points.length; i++) {
-        const p0 = points[i - 1];
-        const p1 = points[i];
-        const width = tool === 'highlighter'
-          ? size * 4
-          : size * (p1.pressure * 1.5 + 0.25);
-
-        ctx.beginPath();
-        ctx.lineWidth = width;
-
-        if (i < points.length - 1) {
-          const p2 = points[i + 1];
-          const midX = (this._tx(p1.x) + this._tx(p2.x)) / 2;
-          const midY = (this._ty(p1.y) + this._ty(p2.y)) / 2;
-          ctx.moveTo(this._tx(p0.x), this._ty(p0.y));
-          ctx.quadraticCurveTo(this._tx(p1.x), this._ty(p1.y), midX, midY);
-        } else {
-          ctx.moveTo(this._tx(p0.x), this._ty(p0.y));
-          ctx.lineTo(this._tx(p1.x), this._ty(p1.y));
-        }
-        ctx.stroke();
-      }
+    const renderer = ToolRenderers[tool];
+    if (renderer && renderer.incremental) {
+      renderer.incremental(this, ctx, this.currentStroke);
     }
 
     ctx.restore();
@@ -334,69 +394,16 @@ class CanvasEngine {
    */
   _renderStroke(stroke) {
     const { points, tool, color, size, opacity } = stroke;
-    if (points.length < 2) return;
+    if (points.length < 2 && tool !== 'text') return;
 
     const ctx = this.ctx;
     ctx.save();
-
     ctx.lineCap = 'round';
     ctx.lineJoin = 'round';
 
-    if (tool === 'highlighter') {
-      ctx.globalCompositeOperation = 'multiply';
-      ctx.globalAlpha = 0.35;
-      ctx.strokeStyle = color;
-      ctx.lineWidth = size * 4;
-    } else if (tool === 'pen') {
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = color;
-    } else if (tool === 'arrow') {
-      ctx.globalAlpha = opacity;
-      ctx.strokeStyle = color;
-      ctx.fillStyle = color;
-      ctx.lineWidth = size;
-    } else if (tool === 'text') {
-      ctx.globalAlpha = opacity;
-      ctx.fillStyle = color;
-      ctx.font = `${size}px inherit`;
-      ctx.textBaseline = 'top';
-    }
-
-    if (tool === 'arrow') {
-      this._drawArrow(ctx, points, size);
-    } else if (tool === 'text') {
-      // Create multiline support
-      const lines = (stroke.text || '').split('\n');
-      let yOffset = this._ty(points[0].y);
-      for (const line of lines) {
-        ctx.fillText(line, this._tx(points[0].x), yOffset);
-        yOffset += size * 1.2;
-      }
-    } else {
-      // Pressure-sensitive, variable-width Bézier smoothing:
-      // Each segment is drawn individually because lineWidth changes per point.
-      for (let i = 1; i < points.length; i++) {
-        const p0 = points[i - 1];
-        const p1 = points[i];
-        const width = tool === 'highlighter'
-          ? size * 4
-          : size * (p1.pressure * 1.5 + 0.25);
-
-        ctx.beginPath();
-        ctx.lineWidth = width;
-
-        if (i < points.length - 1) {
-          const p2 = points[i + 1];
-          const midX = (this._tx(p1.x) + this._tx(p2.x)) / 2;
-          const midY = (this._ty(p1.y) + this._ty(p2.y)) / 2;
-          ctx.moveTo(this._tx(p0.x), this._ty(p0.y));
-          ctx.quadraticCurveTo(this._tx(p1.x), this._ty(p1.y), midX, midY);
-        } else {
-          ctx.moveTo(this._tx(p0.x), this._ty(p0.y));
-          ctx.lineTo(this._tx(p1.x), this._ty(p1.y));
-        }
-        ctx.stroke();
-      }
+    const renderer = ToolRenderers[tool];
+    if (renderer && renderer.full) {
+      renderer.full(this, ctx, stroke);
     }
 
     ctx.restore();
@@ -630,7 +637,8 @@ class CanvasEngine {
     this.canvas.removeEventListener('pointercancel', this._boundPointerUp);
 
     if (this._scrollHandler) {
-      window.removeEventListener('scroll', this._scrollHandler);
+      const target = this.scrollContainer || window;
+      target.removeEventListener('scroll', this._scrollHandler);
     }
 
     if (this._resizeHandler) {

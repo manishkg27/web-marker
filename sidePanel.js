@@ -6,32 +6,62 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
       <div class="wm-side-panel-header">
         <span class="wm-side-panel-title">Notes</span>
         <div class="wm-side-panel-controls">
-          <button class="wm-pin-btn" id="wm-pin-btn" title="Pin panel">📌</button>
+          <button class="wm-undo-btn" id="wm-side-undo-btn" title="Undo" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">↩️</button>
+          <button class="wm-redo-btn" id="wm-side-redo-btn" title="Redo" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">↪️</button>
+          <button class="wm-clear-btn" id="wm-side-clear-btn" title="Clear Panel" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">🗑️</button>
           <button class="wm-close-btn" id="wm-close-btn" title="Close">✕</button>
         </div>
       </div>
-      <canvas class="wm-side-canvas" id="wm-side-canvas"></canvas>
+      <div class="wm-side-pages" id="wm-side-pages">
+        <canvas class="wm-side-canvas active" id="wm-side-canvas"></canvas>
+      </div>
     </div>
   `;
 
   const div = document.createElement('div');
   div.innerHTML = html;
-  shadowRoot.appendChild(div.firstElementChild);
-  shadowRoot.appendChild(div.lastElementChild);
+  shadowRoot.appendChild(div.firstElementChild); // ghost
+  shadowRoot.appendChild(div.lastElementChild);  // panel
 
   const ghost = shadowRoot.getElementById('wm-side-panel-ghost');
   const panel = shadowRoot.getElementById('wm-side-panel');
   const resizer = shadowRoot.getElementById('wm-panel-resizer');
-  const canvas = shadowRoot.getElementById('wm-side-canvas');
-  const pinBtn = shadowRoot.getElementById('wm-pin-btn');
+  const undoBtn = shadowRoot.getElementById('wm-side-undo-btn');
+  const redoBtn = shadowRoot.getElementById('wm-side-redo-btn');
+  const clearBtn = shadowRoot.getElementById('wm-side-clear-btn');
   const closeBtn = shadowRoot.getElementById('wm-close-btn');
+  const sidePages = shadowRoot.getElementById('wm-side-pages');
+  const canvas = shadowRoot.getElementById('wm-side-canvas');
 
-  let isPinned = false;
   let isPanelVisible = false;
   let isResizing = false;
   let currentWidth = 320;
 
-  const engine = new window.CanvasEngine(canvas, 'sidePanel', { scrollAware: false });
+  chrome.storage.local.get('sidePanelWidth', (result) => {
+    if (result.sidePanelWidth) {
+      currentWidth = result.sidePanelWidth;
+      panel.style.width = `${currentWidth}px`;
+      if (engine) engine.resize();
+    }
+  });
+
+  const engine = new window.CanvasEngine(canvas, 'sidePanel', { 
+    scrollAware: true, 
+    scrollContainer: sidePages 
+  });
+
+  // Rollable pages spacer logic
+  const spacer = document.createElement('div');
+  spacer.style.cssText = 'height: 100vh; width: 1px; pointer-events: none; clear: both;';
+  sidePages.appendChild(spacer);
+
+  sidePages.addEventListener('scroll', () => {
+    const scrollPos = sidePages.scrollTop + sidePages.clientHeight;
+    const docHeight = sidePages.scrollHeight;
+    if (scrollPos >= docHeight - 50) {
+      spacer.style.height = `${parseInt(spacer.style.height || '100') + 100}vh`;
+    }
+  }, { passive: true });
 
   resizer.addEventListener('mousedown', (e) => {
     isResizing = true;
@@ -44,14 +74,11 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
       isResizing = false;
       resizer.classList.remove('active');
       engine.resize();
-      
-      if (isPinned) {
-        document.body.style.marginRight = `${currentWidth}px`;
-      }
+      chrome.storage.local.set({ sidePanelWidth: currentWidth });
     }
   });
 
-  // --- Ghost indicator & Auto-slide logic ---
+  // Auto-Popup and Resize Logic
   document.addEventListener('mousemove', (e) => {
     if (isResizing) {
       let newWidth = window.innerWidth - e.clientX;
@@ -81,26 +108,54 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     }
   });
 
+  let hideTimeout = null;
+
+  panel.addEventListener('mouseenter', () => {
+    if (hideTimeout) {
+      clearTimeout(hideTimeout);
+      hideTimeout = null;
+    }
+  });
+
+  // Auto-Close when mouse leaves panel
+  panel.addEventListener('mouseleave', () => {
+    if (isResizing) return;
+    hideTimeout = setTimeout(() => {
+      slideOut();
+    }, 400);
+  });
+
+  undoBtn.addEventListener('click', () => {
+    engine.undo();
+  });
+
+  redoBtn.addEventListener('click', () => {
+    engine.redo();
+  });
+
+  clearBtn.addEventListener('click', () => {
+    engine.clear();
+  });
+
   const slideIn = () => {
     isPanelVisible = true;
     ghost.style.opacity = '0';
     ghost.style.pointerEvents = 'none';
     
     panel.style.transform = 'translateX(0)';
-    if (isPinned) {
-      document.body.style.marginRight = `${currentWidth}px`;
-    }
-    
-    // Resize engine after transition
-    setTimeout(() => engine.resize(), 300);
+    setTimeout(() => {
+      engine.resize();
+      shadowRoot.dispatchEvent(new CustomEvent('wm-surface-changed', {
+        detail: { name: 'sidePanel', engine: engine }
+      }));
+      shadowRoot.dispatchEvent(new CustomEvent('wm-panel-opened'));
+    }, 300);
   };
 
   const slideOut = () => {
-    if (isPinned) return; // Don't slide out if pinned
-    
     isPanelVisible = false;
     panel.style.transform = 'translateX(100%)';
-    document.body.style.marginRight = '';
+    shadowRoot.dispatchEvent(new CustomEvent('wm-panel-closed'));
   };
 
   const toggle = () => {
@@ -108,35 +163,13 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     else slideIn();
   };
 
-  // Close button
-  closeBtn.addEventListener('click', () => {
-    isPinned = false;
-    pinBtn.classList.remove('active');
-    isPanelVisible = false;
-    panel.style.transform = 'translateX(100%)';
-    document.body.style.marginRight = '';
-  });
+  closeBtn.addEventListener('click', slideOut);
 
-  // Pin button
-  pinBtn.addEventListener('click', () => {
-    isPinned = !isPinned;
-    pinBtn.classList.toggle('active', isPinned);
-    
-    if (isPinned && isPanelVisible) {
-      document.body.style.marginRight = `${currentWidth}px`;
-    } else {
-      document.body.style.marginRight = '';
-    }
-  });
-
-  // Active surface tracking
   canvas.addEventListener('pointerdown', () => {
     shadowRoot.dispatchEvent(new CustomEvent('wm-surface-changed', {
       detail: { name: 'sidePanel', engine: engine }
     }));
   });
-
-
 
   return {
     show: slideIn,
@@ -144,6 +177,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     toggle,
     isVisible: () => isPanelVisible,
     getEngine: () => engine,
+    getActiveEngine: () => engine,
     panel
   };
 };

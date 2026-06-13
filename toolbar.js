@@ -34,17 +34,70 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
           <div class="wm-color-picker-wrapper">
             <button class="wm-color-btn" id="wm-color-btn" style="background:#ff3366"></button>
             <div class="wm-color-popover hidden" id="wm-color-popover">
-              <div class="wm-color-swatches">
-                <button class="wm-swatch active" data-color="#ff3366" style="background:#ff3366"></button>
-                <button class="wm-swatch" data-color="#3366ff" style="background:#3366ff"></button>
-                <button class="wm-swatch" data-color="#33cc66" style="background:#33cc66"></button>
-                <button class="wm-swatch" data-color="#ffcc00" style="background:#ffcc00"></button>
-                <button class="wm-swatch" data-color="#1a1a2e" style="background:#1a1a2e"></button>
-                <button class="wm-swatch" data-color="#ffffff" style="background:#ffffff; border: 1px solid #ccc;"></button>
+              <div class="wm-color-header">
+                <button class="wm-color-cancel" id="wm-color-cancel">Cancel</button>
+                <span class="wm-color-title">Choose a color</span>
+                <button class="wm-color-select" id="wm-color-select">Select</button>
               </div>
-              <div class="wm-custom-color-row">
-                <label>Custom</label>
-                <input type="color" class="wm-color-custom" value="#ff3366" title="Custom color">
+              <div class="wm-color-swatches" id="wm-color-swatches">
+                <!-- Row 1: Lightest -->
+                <button class="wm-swatch" data-color="#b3d4ff" style="background-color:#b3d4ff"></button>
+                <button class="wm-swatch" data-color="#b3e6cc" style="background-color:#b3e6cc"></button>
+                <button class="wm-swatch" data-color="#ffffcc" style="background-color:#ffffcc"></button>
+                <button class="wm-swatch" data-color="#ffccb3" style="background-color:#ffccb3"></button>
+                <button class="wm-swatch" data-color="#ffb3b3" style="background-color:#ffb3b3"></button>
+                <button class="wm-swatch" data-color="#e6b3ff" style="background-color:#e6b3ff"></button>
+                <button class="wm-swatch" data-color="#e6ccb3" style="background-color:#e6ccb3"></button>
+                <button class="wm-swatch" data-color="#ffffff" style="background-color:#ffffff;"></button>
+                
+                <!-- Row 2: Light -->
+                <button class="wm-swatch" data-color="#66a3ff" style="background-color:#66a3ff"></button>
+                <button class="wm-swatch" data-color="#66cc99" style="background-color:#66cc99"></button>
+                <button class="wm-swatch" data-color="#ffff66" style="background-color:#ffff66"></button>
+                <button class="wm-swatch" data-color="#ff9966" style="background-color:#ff9966"></button>
+                <button class="wm-swatch" data-color="#ff6666" style="background-color:#ff6666"></button>
+                <button class="wm-swatch" data-color="#cc66ff" style="background-color:#cc66ff"></button>
+                <button class="wm-swatch" data-color="#c69c6d" style="background-color:#c69c6d"></button>
+                <button class="wm-swatch" data-color="#cccccc" style="background-color:#cccccc"></button>
+                
+                <!-- Row 3: Medium / Primary -->
+                <button class="wm-swatch" data-color="#1a75ff" style="background-color:#1a75ff"></button>
+                <button class="wm-swatch" data-color="#1f995c" style="background-color:#1f995c"></button>
+                <button class="wm-swatch" data-color="#ffcc00" style="background-color:#ffcc00"></button>
+                <button class="wm-swatch" data-color="#ff661a" style="background-color:#ff661a"></button>
+                <button class="wm-swatch active" data-color="#ff3366" style="background-color:#ff3366"></button>
+                <button class="wm-swatch" data-color="#9900e6" style="background-color:#9900e6"></button>
+                <button class="wm-swatch" data-color="#996633" style="background-color:#996633"></button>
+                <button class="wm-swatch" data-color="#999999" style="background-color:#999999"></button>
+                
+                <!-- Row 4: Dark -->
+                <button class="wm-swatch" data-color="#005ce6" style="background-color:#005ce6"></button>
+                <button class="wm-swatch" data-color="#14663d" style="background-color:#14663d"></button>
+                <button class="wm-swatch" data-color="#cc9900" style="background-color:#cc9900"></button>
+                <button class="wm-swatch" data-color="#e64d00" style="background-color:#e64d00"></button>
+                <button class="wm-swatch" data-color="#cc0000" style="background-color:#cc0000"></button>
+                <button class="wm-swatch" data-color="#660099" style="background-color:#660099"></button>
+                <button class="wm-swatch" data-color="#66401a" style="background-color:#66401a"></button>
+                <button class="wm-swatch" data-color="#666666" style="background-color:#666666"></button>
+                
+                <!-- Row 5: Darkest -->
+                <button class="wm-swatch" data-color="#003d99" style="background-color:#003d99"></button>
+                <button class="wm-swatch" data-color="#0a331f" style="background-color:#0a331f"></button>
+                <button class="wm-swatch" data-color="#997300" style="background-color:#997300"></button>
+                <button class="wm-swatch" data-color="#993300" style="background-color:#993300"></button>
+                <button class="wm-swatch" data-color="#800000" style="background-color:#800000"></button>
+                <button class="wm-swatch" data-color="#33004d" style="background-color:#33004d"></button>
+                <button class="wm-swatch" data-color="#33200d" style="background-color:#33200d"></button>
+                <button class="wm-swatch" data-color="#000000" style="background-color:#000000"></button>
+              </div>
+              <div class="wm-custom-section">
+                <div class="wm-custom-label">Custom</div>
+                <div class="wm-custom-row">
+                  <button class="wm-custom-add" id="wm-custom-add" title="Add Custom Color">
+                    <svg viewBox="0 0 24 24" width="16" height="16" stroke="white" stroke-width="2" fill="none"><line x1="12" y1="5" x2="12" y2="19"></line><line x1="5" y1="12" x2="19" y2="12"></line></svg>
+                  </button>
+                  <input type="color" class="wm-color-custom-hidden" id="wm-color-custom" value="#00ff00">
+                </div>
               </div>
             </div>
           </div>
@@ -61,14 +114,12 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
           
           <button class="wm-action-btn" data-action="export" title="Export">${icons.export}</button>
           <button class="wm-toggle-btn active" data-toggle="overlay" title="Overlay">${icons.overlay}</button>
-          <button class="wm-toggle-btn" data-toggle="pages" title="Pages">${icons.pages}</button>
-          
-          <button class="wm-action-btn" data-action="add-space" title="Add Scroll Space">${icons.space}</button>
-          <button class="wm-toggle-btn" data-toggle="panel" title="Panel" style="grid-column: span 2; justify-self: stretch; width: 100%;">${icons.panel}</button>
+          <button class="wm-toggle-btn" data-toggle="panel" title="Panel">${icons.panel}</button>
         </div>
 
-        <div class="wm-slider-row" style="grid-column: span 3">
-          <input type="range" class="wm-slider" min="1" max="20" value="3" data-prop="size">
+        <div class="wm-slider-row" style="grid-column: span 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
+          <input type="range" class="wm-slider" id="wm-size-slider" min="1" max="50" value="3" data-prop="size" style="width: 100%;">
+          <input type="number" class="wm-size-input" id="wm-size-input" min="1" max="50" value="3" title="Pen Size">
         </div>
       </div>
     </div>
@@ -84,6 +135,8 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   const colorPopover = shadowRoot.getElementById('wm-color-popover');
   
   let toolState = { activeTool: 'pen', color: '#ff3366', size: 3, opacity: 1 };
+  let tempColor = null;
+  let initialColorOnOpen = null;
   
   const onToggle = {
     overlay: null,
@@ -109,37 +162,74 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     });
   };
 
-  const updateUIFromState = () => {
+  const updateUIFromState = (previewColor) => {
     // Tool
     shadowRoot.querySelectorAll('.wm-tool-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.tool === toolState.activeTool);
     });
     
+    const displayColor = previewColor || toolState.color;
+
     // Color
     shadowRoot.querySelectorAll('.wm-swatch').forEach(btn => {
-      btn.classList.toggle('active', btn.dataset.color === toolState.color);
+      btn.classList.toggle('active', btn.dataset.color === displayColor);
     });
     if (colorBtn) {
-      colorBtn.style.background = toolState.color;
+      colorBtn.style.backgroundColor = displayColor;
     }
-    const customColor = shadowRoot.querySelector('.wm-color-custom');
-    if (customColor) customColor.value = toolState.color;
+    const customColor = shadowRoot.querySelector('#wm-color-custom');
+    if (customColor) customColor.value = displayColor;
     
     // Sliders
-    const sizeSlider = shadowRoot.querySelector('.wm-slider[data-prop="size"]');
+    const sizeSlider = shadowRoot.querySelector('#wm-size-slider');
     if (sizeSlider) sizeSlider.value = toolState.size;
+    
+    const sizeInput = shadowRoot.querySelector('#wm-size-input');
+    if (sizeInput) sizeInput.value = toolState.size;
   };
 
   containerElement.addEventListener('click', (e) => {
+    // Check if clicking Cancel
+    if (e.target.closest('#wm-color-cancel')) {
+      toolState.color = initialColorOnOpen || toolState.color;
+      tempColor = null;
+      updateUIFromState();
+      syncToolState();
+      colorPopover.classList.add('hidden');
+      return;
+    }
+
+    // Check if clicking Select
+    if (e.target.closest('#wm-color-select')) {
+      if (tempColor) {
+        toolState.color = tempColor;
+      }
+      tempColor = null;
+      updateUIFromState();
+      syncToolState();
+      colorPopover.classList.add('hidden');
+      return;
+    }
+
     // Close popover if clicking outside
     if (!e.target.closest('.wm-color-picker-wrapper')) {
+      if (!colorPopover.classList.contains('hidden')) {
+        // If clicking outside, act like "Select"
+        if (tempColor) toolState.color = tempColor;
+        tempColor = null;
+        updateUIFromState();
+        syncToolState();
+      }
       colorPopover.classList.add('hidden');
     }
 
     if (e.target.closest('#wm-color-btn')) {
+      initialColorOnOpen = toolState.color;
+      tempColor = null;
       colorPopover.classList.toggle('hidden');
       return;
     }
+    
     const toolBtn = e.target.closest('.wm-tool-btn');
     if (toolBtn) {
       toolState.activeTool = toolBtn.dataset.tool;
@@ -150,9 +240,14 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
 
     const swatch = e.target.closest('.wm-swatch');
     if (swatch) {
-      toolState.color = swatch.dataset.color;
-      updateUIFromState();
-      syncToolState();
+      tempColor = swatch.dataset.color;
+      updateUIFromState(tempColor);
+      return;
+    }
+    
+    const addCustomBtn = e.target.closest('#wm-custom-add');
+    if (addCustomBtn) {
+      shadowRoot.querySelector('#wm-color-custom').click();
       return;
     }
 
@@ -172,9 +267,6 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
         a.download = `web-marker-export-${Date.now()}.png`;
         a.click();
       }
-      else if (action === 'add-space') {
-        shadowRoot.dispatchEvent(new CustomEvent('wm-add-space'));
-      }
       return;
     }
 
@@ -189,12 +281,28 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     }
   });
 
-  const customColorInput = shadowRoot.querySelector('.wm-color-custom');
+  const customColorInput = shadowRoot.querySelector('#wm-color-custom');
   if (customColorInput) {
     customColorInput.addEventListener('input', (e) => {
-      toolState.color = e.target.value;
-      updateUIFromState();
-      syncToolState();
+      tempColor = e.target.value;
+      
+      // Let's create a custom swatch for it if we want to mimic the image exactly, 
+      // but for simplicity we'll just set it to tempColor
+      // Update UI preview
+      updateUIFromState(tempColor);
+      
+      // Check if there is a custom swatch area, we can update the first custom swatch background
+      const customSection = shadowRoot.querySelector('.wm-custom-row');
+      // Look for existing active custom swatch or create one
+      let customSwatch = shadowRoot.querySelector('.wm-swatch.custom-active');
+      if (!customSwatch) {
+        customSwatch = document.createElement('button');
+        customSwatch.className = 'wm-swatch custom-active';
+        customSection.appendChild(customSwatch);
+      }
+      customSwatch.dataset.color = tempColor;
+      customSwatch.style.backgroundColor = tempColor;
+      updateUIFromState(tempColor);
     });
   }
 
@@ -203,12 +311,33 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
       const prop = e.target.dataset.prop;
       if (prop === 'size') {
         toolState.size = parseInt(e.target.value);
+        updateUIFromState(); // Sync input box
       } else if (prop === 'opacity') {
         toolState.opacity = parseInt(e.target.value) / 100;
       }
       syncToolState();
     });
   });
+
+  const sizeInput = shadowRoot.getElementById('wm-size-input');
+  if (sizeInput) {
+    sizeInput.addEventListener('input', (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val)) return; // Allow empty typing
+      if (val < 1) val = 1;
+      if (val > 50) val = 50;
+      toolState.size = val;
+      updateUIFromState(); // Sync slider
+      syncToolState();
+    });
+    sizeInput.addEventListener('blur', (e) => {
+      let val = parseInt(e.target.value, 10);
+      if (isNaN(val) || val < 1) val = 1;
+      toolState.size = val;
+      updateUIFromState();
+      syncToolState();
+    });
+  }
 
   // --- Dragging & Toggling Logic ---
   const handle = shadowRoot.querySelector('.wm-toolbar-handle');

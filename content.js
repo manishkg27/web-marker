@@ -38,7 +38,6 @@
   
   // 7. Initialize modules
   const toolbar = window.ToolbarModule(shadow, () => activeEngine, setActiveSurface);
-  const blankPages = window.BlankPagesModule(shadow, toolbar);
   const sidePanel = window.SidePanelModule(shadow, toolbar);
   
   // 8. Wire up toggle events
@@ -51,33 +50,28 @@
     }
   });
   
-  shadow.addEventListener('wm-toggle-pages', () => {
-    if (blankPages.container.style.display === 'none') {
-      blankPages.show();
-      setActiveSurface('blankPage_0', blankPages.getActiveEngine()); // Default to active blank page
-    } else {
-      blankPages.hide();
-      setActiveSurface('overlay', overlayEngine);
-    }
-  });
-  
   shadow.addEventListener('wm-toggle-panel', () => {
     sidePanel.toggle();
   });
 
-  shadow.addEventListener('wm-add-space', () => {
-    let spacer = document.getElementById('wm-scroll-spacer');
-    if (!spacer) {
-      spacer = document.createElement('div');
-      spacer.id = 'wm-scroll-spacer';
-      spacer.style.cssText = 'height: 100vh; width: 100%; display: block; clear: both; background: transparent; pointer-events: none; margin: 0; padding: 0;';
-      document.body.appendChild(spacer);
-    } else {
-      const currentHeight = parseInt(spacer.style.height || '100');
-      spacer.style.height = `${currentHeight + 100}vh`;
+  // Auto-expand space at bottom when drawing enabled
+  window.addEventListener('scroll', () => {
+    if (drawingEnabled) {
+      const scrollPos = window.scrollY + window.innerHeight;
+      const docHeight = document.documentElement.scrollHeight;
+      if (scrollPos >= docHeight - 50) {
+        let spacer = document.getElementById('wm-scroll-spacer');
+        if (!spacer) {
+          spacer = document.createElement('div');
+          spacer.id = 'wm-scroll-spacer';
+          spacer.style.cssText = 'height: 100vh; width: 100%; display: block; clear: both; background: transparent; pointer-events: none; margin: 0; padding: 0;';
+          document.body.appendChild(spacer);
+        } else {
+          spacer.style.height = `${parseInt(spacer.style.height || '100') + 100}vh`;
+        }
+      }
     }
-    window.scrollBy({ top: 300, behavior: 'smooth' });
-  });
+  }, { passive: true });
 
   // Track surface changes from submodules
   shadow.addEventListener('wm-surface-changed', (e) => {
@@ -92,16 +86,18 @@
   shadow.addEventListener('wm-tool-changed', (e) => {
     const state = e.detail;
     if (overlayEngine) overlayEngine.setToolState(state);
-    if (blankPages) {
-      for(let i=0; i<5; i++) {
-        const eng = blankPages.getEngine(i);
-        if (eng) eng.setToolState(state);
-      }
-    }
     if (sidePanel) {
       const eng = sidePanel.getEngine();
       if (eng) eng.setToolState(state);
     }
+  });
+
+  shadow.addEventListener('wm-panel-opened', () => {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_OPENED' }).catch(() => {});
+  });
+
+  shadow.addEventListener('wm-panel-closed', () => {
+    chrome.runtime.sendMessage({ type: 'SIDE_PANEL_CLOSED' }).catch(() => {});
   });
   
   // 9. Active surface tracking via pointerdown on canvases
@@ -110,21 +106,39 @@
   });
   
   // 10. Keyboard shortcuts (on document, not shadow)
+  let mouseX = 0;
+  document.addEventListener('mousemove', (e) => {
+    mouseX = e.clientX;
+  });
+
   document.addEventListener('keydown', (e) => {
     // Don't intercept if user is typing in an input/textarea
     const tag = (e.target.tagName || '').toLowerCase();
     if (tag === 'input' || tag === 'textarea' || tag === 'select' || e.target.isContentEditable) return;
     
+    // Determine target engine based on mouse hover
+    let targetEngine = activeEngine;
+    if (sidePanel.isVisible()) {
+      const panelRect = sidePanel.panel.getBoundingClientRect();
+      if (mouseX >= panelRect.left) {
+        targetEngine = sidePanel.getEngine();
+      } else {
+        targetEngine = overlayEngine;
+      }
+    } else {
+      targetEngine = overlayEngine;
+    }
+
     // Ctrl+Z → Undo
     if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key.toLowerCase() === 'z') {
       e.preventDefault();
-      activeEngine.undo();
+      targetEngine.undo();
       return;
     }
     // Ctrl+Y or Ctrl+Shift+Z → Redo
     if ((e.ctrlKey || e.metaKey) && (e.key.toLowerCase() === 'y' || (e.shiftKey && e.key.toLowerCase() === 'z'))) {
       e.preventDefault();
-      activeEngine.redo();
+      targetEngine.redo();
       return;
     }
     // Ctrl+Shift+X → Toggle side panel
@@ -138,7 +152,6 @@
       drawingEnabled = false;
       root.style.display = 'none';
       toolbar.hide();
-      blankPages.hide();
       sidePanel.hide();
       
       overlayCanvas.style.pointerEvents = 'none';
@@ -148,14 +161,7 @@
       if (overlayToggle) overlayToggle.classList.remove('active');
       return;
     }
-    // Alt+1 through Alt+5 → Switch blank pages
-    if (e.altKey && e.key >= '1' && e.key <= '5') {
-      e.preventDefault();
-      const index = parseInt(e.key) - 1;
-      blankPages.switchPage(index);
-      blankPages.show();
-      return;
-    }
+
   });
   
   // 11. Listen for messages from background/popup
@@ -178,20 +184,40 @@
       
       const overlayToggle = shadow.querySelector('.wm-toggle-btn[data-toggle="overlay"]');
       if (overlayToggle) overlayToggle.classList.toggle('active', drawingEnabled);
+    } else if (msg.type === 'SURFACE_UPDATED') {
+      const { surfaceId, strokes } = msg.payload;
+      if (surfaceId === 'sidePanel' && sidePanel) {
+        const engine = sidePanel.getEngine();
+        if (engine) {
+          engine.strokes = strokes;
+          engine.redrawAll();
+        }
+      }
     }
   });
   
   // 12. Handle text tool requests
   shadow.addEventListener('wm-text-request', (e) => {
     const { x, y, docX, docY, surfaceId } = e.detail;
+    
     // Create a text input positioned at the click location
     const input = document.createElement('textarea');
     input.className = 'wm-text-input';
+    
+    const updatePosition = () => {
+      // For scroll-aware surfaces, we adjust for scroll. For others, x/y are fixed.
+      if (surfaceId === 'overlay') {
+        input.style.left = `${docX - window.scrollX}px`;
+        input.style.top = `${docY - window.scrollY}px`;
+      } else {
+        input.style.left = `${x}px`;
+        input.style.top = `${y}px`;
+      }
+    };
+    
     input.style.cssText = `
       position: fixed;
-      left: ${x}px;
-      top: ${y}px;
-      z-index: 2147483645;
+      z-index: var(--wm-z-text);
       min-width: 100px;
       min-height: 30px;
       background: transparent;
@@ -202,7 +228,12 @@
       outline: none;
       resize: both;
     `;
+    updatePosition();
     shadow.appendChild(input);
+    
+    if (surfaceId === 'overlay') {
+      window.addEventListener('scroll', updatePosition, { passive: true });
+    }
     
     // Focus after a tiny delay to ensure it's rendered
     setTimeout(() => input.focus(), 10);
@@ -230,6 +261,9 @@
           activeEngine.redrawAll();
         }
       }
+      if (surfaceId === 'overlay') {
+        window.removeEventListener('scroll', updatePosition);
+      }
       input.remove();
     };
     
@@ -241,6 +275,9 @@
         commitText();
       }
       if (ke.key === 'Escape') {
+        if (surfaceId === 'overlay') {
+          window.removeEventListener('scroll', updatePosition);
+        }
         input.remove();
       }
       // Stop propagation so we don't trigger global shortcuts while typing
@@ -258,24 +295,12 @@
           overlayEngine.strokes = state.data.overlay.strokes;
           overlayEngine.redrawAll();
         }
-        // Restore blank pages
-        for (let i = 0; i < 5; i++) {
-          const key = `blankPage_${i}`;
-          if (state.data[key]?.strokes?.length) {
-             const engine = blankPages.getEngine(i);
-             if (engine) {
-               engine.strokes = state.data[key].strokes;
-               // It will redraw on its own when shown, or we can force it
-               engine.redrawAll();
-             }
-          }
-        }
-        // Restore side panel
+        // Restore global side panel
         if (state.data.sidePanel?.strokes?.length) {
-           const se = sidePanel.getEngine();
-           if (se) {
-             se.strokes = state.data.sidePanel.strokes;
-             se.redrawAll();
+           const engine = sidePanel.getEngine();
+           if (engine) {
+             engine.strokes = state.data.sidePanel.strokes;
+             engine.redrawAll();
            }
         }
       }

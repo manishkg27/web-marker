@@ -16,17 +16,18 @@ function createStrokeCollection() {
   };
 }
 
+let globalSidePanelData = null;
+
+async function saveGlobalSidePanel() {
+  if (globalSidePanelData) {
+    await chrome.storage.local.set({ global_sidePanel: globalSidePanelData });
+  }
+}
+
 /** Create default TabData with every surface initialised. */
 function createTabData() {
   return {
     overlay: createStrokeCollection(),
-    blankPage_0: createStrokeCollection(),
-    blankPage_1: createStrokeCollection(),
-    blankPage_2: createStrokeCollection(),
-    blankPage_3: createStrokeCollection(),
-    blankPage_4: createStrokeCollection(),
-    sidePanel: createStrokeCollection(),
-    activePageIndex: 0,
   };
 }
 
@@ -64,15 +65,35 @@ async function saveTabData(tabId) {
 /**
  * Return the StrokeCollection for a named surface.
  * @param {number} tabId
- * @param {string} surfaceId  e.g. 'overlay', 'blankPage_0' … 'blankPage_4', 'sidePanel'
+ * @param {string} surfaceId  e.g. 'overlay', 'sidePanel'
  * @returns {Promise<object>} StrokeCollection
  */
 async function getSurface(tabId, surfaceId) {
+  if (surfaceId === 'sidePanel') {
+    if (!globalSidePanelData) {
+      const result = await chrome.storage.local.get('global_sidePanel');
+      globalSidePanelData = result.global_sidePanel || createStrokeCollection();
+    }
+    return globalSidePanelData;
+  }
+  
   const tabData = await getTabData(tabId);
   if (!tabData[surfaceId]) {
     tabData[surfaceId] = createStrokeCollection();
   }
   return tabData[surfaceId];
+}
+
+const activeSidePanelTabs = new Set();
+
+async function broadcastSidePanelUpdate() {
+  if (!globalSidePanelData) return;
+  for (const tabId of activeSidePanelTabs) {
+    chrome.tabs.sendMessage(tabId, { 
+      type: 'SURFACE_UPDATED', 
+      payload: { surfaceId: 'sidePanel', strokes: globalSidePanelData.strokes } 
+    }).catch(() => {}); // Ignore errors for tabs without content script
+  }
 }
 // ── Deep-copy utility ───────────────────────────────────────
 
@@ -107,144 +128,183 @@ function snapshotForUndo(collection) {
   }
 }
 
+// ── Message Handlers ────────────────────────────────────────
+
+async function handleAddStroke(tabId, payload, sendResponse) {
+  const { surfaceId, stroke } = payload;
+  const collection = await getSurface(tabId, surfaceId);
+  snapshotUndo(collection);
+  collection.strokes.push(stroke);
+  if (surfaceId === 'sidePanel') {
+    await saveGlobalSidePanel();
+    broadcastSidePanelUpdate();
+  } else {
+    await saveTabData(tabId);
+  }
+  sendResponse({ success: true, data: { strokes: collection.strokes } });
+}
+
+async function handleUndo(tabId, payload, sendResponse) {
+  const { surfaceId } = payload;
+  const collection = await getSurface(tabId, surfaceId);
+
+  if (collection.undoStack.length === 0) {
+    sendResponse({ success: true, data: { strokes: collection.strokes } });
+    return;
+  }
+
+  collection.redoStack.push(deepCopy(collection.strokes));
+  if (collection.redoStack.length > MAX_UNDO_STATES) {
+    collection.redoStack.shift();
+  }
+  collection.strokes = collection.undoStack.pop();
+  if (surfaceId === 'sidePanel') {
+    await saveGlobalSidePanel();
+    broadcastSidePanelUpdate();
+  } else {
+    await saveTabData(tabId);
+  }
+  sendResponse({ success: true, data: { strokes: collection.strokes } });
+}
+
+async function handleRedo(tabId, payload, sendResponse) {
+  const { surfaceId } = payload;
+  const collection = await getSurface(tabId, surfaceId);
+
+  if (collection.redoStack.length === 0) {
+    sendResponse({ success: true, data: { strokes: collection.strokes } });
+    return;
+  }
+
+  snapshotForUndo(collection);
+  collection.strokes = collection.redoStack.pop();
+  if (surfaceId === 'sidePanel') {
+    await saveGlobalSidePanel();
+    broadcastSidePanelUpdate();
+  } else {
+    await saveTabData(tabId);
+  }
+  sendResponse({ success: true, data: { strokes: collection.strokes } });
+}
+
+async function handleClear(tabId, payload, sendResponse) {
+  const { surfaceId } = payload;
+  const collection = await getSurface(tabId, surfaceId);
+  snapshotUndo(collection);
+  collection.strokes = [];
+  if (surfaceId === 'sidePanel') {
+    await saveGlobalSidePanel();
+    broadcastSidePanelUpdate();
+  } else {
+    await saveTabData(tabId);
+  }
+  sendResponse({ success: true, data: { strokes: collection.strokes } });
+}
+
+async function handleGetState(tabId, sendResponse) {
+  const tabData = await getTabData(tabId);
+  const spData = await getSurface(tabId, 'sidePanel');
+  sendResponse({ success: true, data: { ...tabData, sidePanel: spData } });
+}
+
+async function handleSetTool(tabId, payload, sendResponse) {
+  const toolState = payload;
+  await chrome.storage.local.set({ globalToolState: toolState });
+  sendResponse({ success: true, data: toolState });
+}
+
+async function handleGetTool(tabId, sendResponse) {
+  const result = await chrome.storage.local.get('globalToolState');
+  const toolState = result.globalToolState || {
+    activeTool: 'pen',
+    color: '#ff3366',
+    size: 3,
+    opacity: 1,
+  };
+  sendResponse({ success: true, data: toolState });
+}
+
+async function handleSetPage(tabId, payload, sendResponse) {
+  const { index } = payload;
+  const tabData = await getTabData(tabId);
+  tabData.activePageIndex = index;
+  await saveTabData(tabId);
+  sendResponse({ success: true, data: { index } });
+}
+
+async function handleToggleDrawing(tabId, sendResponse) {
+  let targetTabId = tabId;
+  if (!targetTabId) {
+    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    targetTabId = activeTab?.id;
+  }
+  if (targetTabId) {
+    await chrome.tabs.sendMessage(targetTabId, { type: 'TOGGLE_DRAWING' }).catch(() => {});
+  }
+  sendResponse({ success: true });
+}
+
+async function handleEraseStroke(tabId, payload, sendResponse) {
+  const { surfaceId, strokeIndex } = payload;
+  const collection = await getSurface(tabId, surfaceId);
+  snapshotUndo(collection);
+  collection.strokes.splice(strokeIndex, 1);
+  if (surfaceId === 'sidePanel') {
+    await saveGlobalSidePanel();
+    broadcastSidePanelUpdate();
+  } else {
+    await saveTabData(tabId);
+  }
+  sendResponse({ success: true, data: { strokes: collection.strokes } });
+}
+
 // ── Message handler (single listener, async IIFE pattern) ───
 
 chrome.runtime.onMessage.addListener((message, sender, sendResponse) => {
   (async () => {
     try {
       const { type, payload } = message;
-
-      // Resolve tabId — prefer sender.tab.id; fall back for popup
       const tabId = sender.tab?.id;
 
       switch (type) {
-        // ── ADD_STROKE ────────────────────────────────────
-        case 'ADD_STROKE': {
-          const { surfaceId, stroke } = payload;
-          const collection = await getSurface(tabId, surfaceId);
-          snapshotUndo(collection);
-          collection.strokes.push(stroke);
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { strokes: collection.strokes } });
-          break;
-        }
-
-        // ── UNDO ──────────────────────────────────────────
-        case 'UNDO': {
-          const { surfaceId } = payload;
-          const collection = await getSurface(tabId, surfaceId);
-
-          if (collection.undoStack.length === 0) {
-            sendResponse({ success: true, data: { strokes: collection.strokes } });
-            break;
-          }
-
-          collection.redoStack.push(deepCopy(collection.strokes));
-          if (collection.redoStack.length > MAX_UNDO_STATES) {
-            collection.redoStack.shift();
-          }
-          collection.strokes = collection.undoStack.pop();
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { strokes: collection.strokes } });
-          break;
-        }
-
-        // ── REDO ──────────────────────────────────────────
-        case 'REDO': {
-          const { surfaceId } = payload;
-          const collection = await getSurface(tabId, surfaceId);
-
-          if (collection.redoStack.length === 0) {
-            sendResponse({ success: true, data: { strokes: collection.strokes } });
-            break;
-          }
-
-          snapshotForUndo(collection);
-          collection.strokes = collection.redoStack.pop();
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { strokes: collection.strokes } });
-          break;
-        }
-
-        // ── CLEAR ─────────────────────────────────────────
-        case 'CLEAR': {
-          const { surfaceId } = payload;
-          const collection = await getSurface(tabId, surfaceId);
-          snapshotUndo(collection);
-          collection.strokes = [];
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { strokes: collection.strokes } });
-          break;
-        }
-
-        // ── GET_STATE ─────────────────────────────────────
-        case 'GET_STATE': {
-          const tabData = await getTabData(tabId);
-          sendResponse({ success: true, data: tabData });
-          break;
-        }
-
-        // ── SET_TOOL ──────────────────────────────────────
-        case 'SET_TOOL': {
-          const toolState = payload; // { activeTool, color, size, opacity }
-          await chrome.storage.session.set({ [`toolState_${tabId}`]: toolState });
-          sendResponse({ success: true, data: toolState });
-          break;
-        }
-
-        // ── GET_TOOL ──────────────────────────────────────
-        case 'GET_TOOL': {
-          const key = `toolState_${tabId}`;
-          const result = await chrome.storage.session.get(key);
-          const toolState = result[key] || {
-            activeTool: 'pen',
-            color: '#ff3366',
-            size: 3,
-            opacity: 1,
-          };
-          sendResponse({ success: true, data: toolState });
-          break;
-        }
-
-        // ── SET_PAGE ──────────────────────────────────────
-        case 'SET_PAGE': {
-          const { index } = payload;
-          const tabData = await getTabData(tabId);
-          tabData.activePageIndex = index;
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { index } });
-          break;
-        }
-
-        // ── TOGGLE_DRAWING ────────────────────────────────
-        case 'TOGGLE_DRAWING': {
-          // May come from popup (no sender.tab) — query active tab
-          let targetTabId = tabId;
-          if (!targetTabId) {
-            const [activeTab] = await chrome.tabs.query({
-              active: true,
-              currentWindow: true,
-            });
-            targetTabId = activeTab?.id;
-          }
-          if (targetTabId) {
-            await chrome.tabs.sendMessage(targetTabId, { type: 'TOGGLE_DRAWING' });
-          }
+        case 'SIDE_PANEL_OPENED':
+          if (tabId) activeSidePanelTabs.add(tabId);
           sendResponse({ success: true });
           break;
-        }
-
-        // ── ERASE_STROKE ──────────────────────────────────
-        case 'ERASE_STROKE': {
-          const { surfaceId, strokeIndex } = payload;
-          const collection = await getSurface(tabId, surfaceId);
-          snapshotUndo(collection);
-          collection.strokes.splice(strokeIndex, 1);
-          await saveTabData(tabId);
-          sendResponse({ success: true, data: { strokes: collection.strokes } });
+        case 'SIDE_PANEL_CLOSED':
+          if (tabId) activeSidePanelTabs.delete(tabId);
+          sendResponse({ success: true });
           break;
-        }
-
+        case 'ADD_STROKE':
+          await handleAddStroke(tabId, payload, sendResponse);
+          break;
+        case 'UNDO':
+          await handleUndo(tabId, payload, sendResponse);
+          break;
+        case 'REDO':
+          await handleRedo(tabId, payload, sendResponse);
+          break;
+        case 'CLEAR':
+          await handleClear(tabId, payload, sendResponse);
+          break;
+        case 'GET_STATE':
+          await handleGetState(tabId, sendResponse);
+          break;
+        case 'SET_TOOL':
+          await handleSetTool(tabId, payload, sendResponse);
+          break;
+        case 'GET_TOOL':
+          await handleGetTool(tabId, sendResponse);
+          break;
+        case 'SET_PAGE':
+          await handleSetPage(tabId, payload, sendResponse);
+          break;
+        case 'TOGGLE_DRAWING':
+          await handleToggleDrawing(tabId, sendResponse);
+          break;
+        case 'ERASE_STROKE':
+          await handleEraseStroke(tabId, payload, sendResponse);
+          break;
         default:
           sendResponse({ success: false, error: `Unknown message type: ${type}` });
       }
@@ -273,6 +333,6 @@ chrome.action.onClicked.addListener(async (tab) => {
 
 chrome.tabs.onRemoved.addListener((tabId) => {
   tabStore.delete(tabId);
-  chrome.storage.session.remove(`toolState_${tabId}`);
+  activeSidePanelTabs.delete(tabId);
   chrome.storage.session.remove(`tabData_${tabId}`);
 });

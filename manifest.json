@@ -13,7 +13,7 @@
   "background": { "service_worker": "background.js" },
   "content_scripts": [{
     "matches": ["<all_urls>"],
-    "js": ["canvas.js", "toolbar.js", "blankPages.js", "sidePanel.js", "content.js"],
+    "js": ["canvas.js", "toolbar.js", "sidePanel.js", "content.js"],
     "run_at": "document_idle"
   }],
   "web_accessible_resources": [{
