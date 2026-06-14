@@ -4,6 +4,7 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     pen: `<svg viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"></path><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"></path><path d="M2 2l7.586 7.586"></path><circle cx="11" cy="11" r="2"></circle></svg>`,
     highlighter: `<svg viewBox="0 0 24 24"><path d="M17 2l4 4-4 4-4-4 4-4zM2 22v-4l9-9 4 4-9 9H2z"></path></svg>`,
     eraser: `<svg viewBox="0 0 24 24"><path d="M20 20H7L3 16C2.5 15.5 2.5 14.5 3 14L13 4C13.5 3.5 14.5 3.5 15 4L20 9C20.5 9.5 20.5 10.5 20 11L11 20H20V20Z"></path></svg>`,
+    laser: `<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="6" fill="#ff0000" opacity="0.3"></circle><circle cx="12" cy="12" r="3" fill="#ff0000"></circle><path d="M12 2v4M12 18v4M2 12h4M18 12h4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path></svg>`,
     arrow: `<svg viewBox="0 0 24 24"><line x1="5" y1="19" x2="19" y2="5"></line><polyline points="10 5 19 5 19 14"></polyline></svg>`,
     text: `<svg viewBox="0 0 24 24"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>`,
     undo: `<svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>`,
@@ -13,7 +14,10 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     overlay: `<svg viewBox="0 0 24 24"><polygon points="12 2 2 7 12 12 22 7 12 2"></polygon><polyline points="2 17 12 22 22 17"></polyline><polyline points="2 12 12 17 22 12"></polyline></svg>`,
     pages: `<svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>`,
     panel: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="15" y1="3" x2="15" y2="21"></line></svg>`,
-    space: `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>`
+    space: `<svg viewBox="0 0 24 24"><path d="M12 5v14M5 12l7 7 7-7"></path></svg>`,
+    rectangle: `<svg viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="18" rx="2" ry="2" fill="none" stroke="currentColor" stroke-width="2"></rect></svg>`,
+    ellipse: `<svg viewBox="0 0 24 24"><ellipse cx="12" cy="12" rx="9" ry="6" fill="none" stroke="currentColor" stroke-width="2"></ellipse></svg>`,
+    line: `<svg viewBox="0 0 24 24"><line x1="4" y1="20" x2="20" y2="4" stroke="currentColor" stroke-width="2" stroke-linecap="round"></line></svg>`
   };
 
   // Replace undo and redo icons with curved arrows
@@ -101,20 +105,24 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
               </div>
             </div>
           </div>
-          <button class="wm-action-btn" data-action="undo" title="Undo">${icons.undo}</button>
-          <button class="wm-action-btn" data-action="redo" title="Redo">${icons.redo}</button>
+          <button class="wm-action-btn" data-action="undo" aria-label="Undo">${icons.undo}</button>
+          <button class="wm-action-btn" data-action="redo" aria-label="Redo">${icons.redo}</button>
+          <button class="wm-action-btn" data-action="clear" aria-label="Clear">${icons.clear}</button>
 
-          <button class="wm-tool-btn active" data-tool="pen" title="Pen">${icons.pen}</button>
-          <button class="wm-tool-btn" data-tool="highlighter" title="Highlighter">${icons.highlighter}</button>
-          <button class="wm-tool-btn" data-tool="eraser" title="Eraser">${icons.eraser}</button>
+          <button class="wm-tool-btn active" data-tool="pen" aria-label="Pen">${icons.pen}</button>
+          <button class="wm-tool-btn" data-tool="highlighter" aria-label="Highlighter">${icons.highlighter}</button>
+          <button class="wm-tool-btn" data-tool="laser" aria-label="Laser Pointer">${icons.laser}</button>
+          <button class="wm-tool-btn" data-tool="eraser" aria-label="Eraser">${icons.eraser}</button>
           
-          <button class="wm-tool-btn" data-tool="arrow" title="Arrow">${icons.arrow}</button>
-          <button class="wm-tool-btn" data-tool="text" title="Text">${icons.text}</button>
-          <button class="wm-action-btn" data-action="clear" title="Clear">${icons.clear}</button>
+          <button class="wm-tool-btn" data-tool="arrow" aria-label="Arrow">${icons.arrow}</button>
+          <button class="wm-tool-btn" data-tool="line" aria-label="Line">${icons.line}</button>
+          <button class="wm-tool-btn" data-tool="rectangle" aria-label="Rectangle">${icons.rectangle}</button>
+          <button class="wm-tool-btn" data-tool="ellipse" aria-label="Ellipse">${icons.ellipse}</button>
           
-          <button class="wm-action-btn" data-action="export" title="Export">${icons.export}</button>
-          <button class="wm-toggle-btn active" data-toggle="overlay" title="Overlay">${icons.overlay}</button>
-          <button class="wm-toggle-btn" data-toggle="panel" title="Panel">${icons.panel}</button>
+          <button class="wm-tool-btn" data-tool="text" aria-label="Text">${icons.text}</button>
+          <button class="wm-action-btn" data-action="export" aria-label="Export">${icons.export}</button>
+          <button class="wm-toggle-btn active" data-toggle="overlay" aria-label="Overlay">${icons.overlay}</button>
+          <button class="wm-toggle-btn" data-toggle="panel" aria-label="Panel">${icons.panel}</button>
         </div>
 
         <div class="wm-slider-row" style="grid-column: span 3; display: flex; flex-direction: column; align-items: center; gap: 8px;">
@@ -134,7 +142,7 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   const colorBtn = shadowRoot.getElementById('wm-color-btn');
   const colorPopover = shadowRoot.getElementById('wm-color-popover');
   
-  let toolState = { activeTool: 'pen', color: '#ff3366', size: 3, opacity: 1 };
+  let toolState = { activeTool: 'pen', tools: {} };
   let tempColor = null;
   let initialColorOnOpen = null;
   
@@ -168,7 +176,8 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
       btn.classList.toggle('active', btn.dataset.tool === toolState.activeTool);
     });
     
-    const displayColor = previewColor || toolState.color;
+    const toolConfig = toolState.tools && toolState.tools[toolState.activeTool] ? toolState.tools[toolState.activeTool] : {};
+    const displayColor = previewColor || toolConfig.color || '#ff3366';
 
     // Color
     shadowRoot.querySelectorAll('.wm-swatch').forEach(btn => {
@@ -182,16 +191,18 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     
     // Sliders
     const sizeSlider = shadowRoot.querySelector('#wm-size-slider');
-    if (sizeSlider) sizeSlider.value = toolState.size;
+    if (sizeSlider) sizeSlider.value = toolConfig.size || 3;
     
     const sizeInput = shadowRoot.querySelector('#wm-size-input');
-    if (sizeInput) sizeInput.value = toolState.size;
+    if (sizeInput) sizeInput.value = toolConfig.size || 3;
   };
 
   containerElement.addEventListener('click', (e) => {
     // Check if clicking Cancel
     if (e.target.closest('#wm-color-cancel')) {
-      toolState.color = initialColorOnOpen || toolState.color;
+      if (toolState.tools && toolState.tools[toolState.activeTool] && initialColorOnOpen) {
+        toolState.tools[toolState.activeTool].color = initialColorOnOpen;
+      }
       tempColor = null;
       updateUIFromState();
       syncToolState();
@@ -202,7 +213,8 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     // Check if clicking Select
     if (e.target.closest('#wm-color-select')) {
       if (tempColor) {
-        toolState.color = tempColor;
+        if (!toolState.tools[toolState.activeTool]) toolState.tools[toolState.activeTool] = {};
+        toolState.tools[toolState.activeTool].color = tempColor;
       }
       tempColor = null;
       updateUIFromState();
@@ -215,7 +227,10 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     if (!e.target.closest('.wm-color-picker-wrapper')) {
       if (!colorPopover.classList.contains('hidden')) {
         // If clicking outside, act like "Select"
-        if (tempColor) toolState.color = tempColor;
+        if (tempColor) {
+          if (!toolState.tools[toolState.activeTool]) toolState.tools[toolState.activeTool] = {};
+          toolState.tools[toolState.activeTool].color = tempColor;
+        }
         tempColor = null;
         updateUIFromState();
         syncToolState();
@@ -224,7 +239,7 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     }
 
     if (e.target.closest('#wm-color-btn')) {
-      initialColorOnOpen = toolState.color;
+      initialColorOnOpen = toolState.tools && toolState.tools[toolState.activeTool] ? toolState.tools[toolState.activeTool].color : '#ff3366';
       tempColor = null;
       colorPopover.classList.toggle('hidden');
       return;
@@ -309,11 +324,12 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   shadowRoot.querySelectorAll('.wm-slider').forEach(slider => {
     slider.addEventListener('input', (e) => {
       const prop = e.target.dataset.prop;
+      if (!toolState.tools[toolState.activeTool]) toolState.tools[toolState.activeTool] = {};
       if (prop === 'size') {
-        toolState.size = parseInt(e.target.value);
+        toolState.tools[toolState.activeTool].size = parseInt(e.target.value);
         updateUIFromState(); // Sync input box
       } else if (prop === 'opacity') {
-        toolState.opacity = parseInt(e.target.value) / 100;
+        toolState.tools[toolState.activeTool].opacity = parseInt(e.target.value) / 100;
       }
       syncToolState();
     });
@@ -326,14 +342,16 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
       if (isNaN(val)) return; // Allow empty typing
       if (val < 1) val = 1;
       if (val > 50) val = 50;
-      toolState.size = val;
+      if (!toolState.tools[toolState.activeTool]) toolState.tools[toolState.activeTool] = {};
+      toolState.tools[toolState.activeTool].size = val;
       updateUIFromState(); // Sync slider
       syncToolState();
     });
     sizeInput.addEventListener('blur', (e) => {
       let val = parseInt(e.target.value, 10);
       if (isNaN(val) || val < 1) val = 1;
-      toolState.size = val;
+      if (!toolState.tools[toolState.activeTool]) toolState.tools[toolState.activeTool] = {};
+      toolState.tools[toolState.activeTool].size = val;
       updateUIFromState();
       syncToolState();
     });
@@ -344,8 +362,29 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
   let isDragging = false;
   let hasDragged = false;
   let dragOffset = { x: 0, y: 0 };
+  let startPos = { x: 0, y: 0 };
+  let autoCloseTimeout = null;
 
-  containerElement.addEventListener('mousedown', (e) => {
+  const startAutoClose = () => {
+    if (autoCloseTimeout) clearTimeout(autoCloseTimeout);
+    if (!toolbarDiv.classList.contains('hidden')) {
+      autoCloseTimeout = setTimeout(() => {
+        toolbarDiv.classList.add('hidden');
+      }, 3000);
+    }
+  };
+
+  const cancelAutoClose = () => {
+    if (autoCloseTimeout) {
+      clearTimeout(autoCloseTimeout);
+      autoCloseTimeout = null;
+    }
+  };
+
+  containerElement.addEventListener('pointerenter', cancelAutoClose);
+  containerElement.addEventListener('pointerleave', startAutoClose);
+
+  containerElement.addEventListener('pointerdown', (e) => {
     // Drag handle check
     if (!e.target.closest('.wm-toolbar-handle')) return;
     
@@ -354,30 +393,46 @@ window.ToolbarModule = function(shadowRoot, getActiveEngine, setActiveSurface) {
     const rect = containerElement.getBoundingClientRect();
     dragOffset.x = e.clientX - rect.left;
     dragOffset.y = e.clientY - rect.top;
+    startPos.x = e.clientX;
+    startPos.y = e.clientY;
+    
+    try { handle.setPointerCapture(e.pointerId); } catch(err){}
   });
 
-  document.addEventListener('mousemove', (e) => {
+  document.addEventListener('pointermove', (e) => {
     if (!isDragging) return;
-    hasDragged = true;
-    let newX = e.clientX - dragOffset.x;
-    let newY = e.clientY - dragOffset.y;
     
-    // Clamp to viewport
-    const rect = containerElement.getBoundingClientRect();
-    newX = Math.max(0, Math.min(newX, window.innerWidth - rect.width));
-    newY = Math.max(0, Math.min(newY, window.innerHeight - rect.height));
-    
-    containerElement.style.left = `${newX}px`;
-    containerElement.style.top = `${newY}px`;
-    containerElement.style.bottom = 'auto';
-    containerElement.style.right = 'auto';
-    containerElement.style.transform = 'none'; // Overrides initial translateX(-50%)
+    if (!hasDragged) {
+      const dist = Math.hypot(e.clientX - startPos.x, e.clientY - startPos.y);
+      if (dist > 4) hasDragged = true;
+    }
+
+    if (hasDragged) {
+      let newX = e.clientX - dragOffset.x;
+      let newY = e.clientY - dragOffset.y;
+      
+      const rect = containerElement.getBoundingClientRect();
+      newX = Math.max(0, Math.min(newX, window.innerWidth - rect.width));
+      newY = Math.max(0, Math.min(newY, window.innerHeight - rect.height));
+      
+      containerElement.style.left = `${newX}px`;
+      containerElement.style.top = `${newY}px`;
+      containerElement.style.bottom = 'auto';
+      containerElement.style.right = 'auto';
+      containerElement.style.transform = 'none';
+    }
   });
 
-  document.addEventListener('mouseup', () => {
-    if (isDragging && !hasDragged) {
-      // Treat as click: toggle toolbar
-      toolbarDiv.classList.toggle('hidden');
+  document.addEventListener('pointerup', (e) => {
+    if (isDragging) {
+      if (!hasDragged) {
+        // Treat as click: toggle toolbar
+        toolbarDiv.classList.toggle('hidden');
+        if (toolbarDiv.classList.contains('hidden')) {
+          cancelAutoClose();
+        }
+      }
+      try { handle.releasePointerCapture(e.pointerId); } catch(err){}
     }
     isDragging = false;
   });

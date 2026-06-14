@@ -7,13 +7,15 @@ Web Marker is a powerful and lightweight Chrome extension that turns any webpage
 ### 🖌️ Drawing & Annotation Tools
 - **Pen**: Smooth, pressure-simulated drawing tool for notes and doodles.
 - **Highlighter**: Semi-transparent marker that multiplies over text for easy reading.
+- **Laser Pointer**: Ephemeral pointer tool that perfectly tracks your movements and automatically vanishes after 2.5 seconds of inactivity. Great for presentations or reading!
 - **Arrow**: Quickly draw directional arrows.
 - **Text Tool**: Click anywhere to type multiline text directly onto the page.
-- **Eraser**: Precision stroke-level erasing.
+- **Eraser**: Precision stroke-level erasing with accurate sizing detection.
 
-### 🎨 Customization
+### 🎨 Customization & Memory
 - **Color Picker**: Choose from vibrant presets or use the custom color selector.
 - **Adjustable Size & Opacity**: Sliders to control the thickness and transparency of your tools.
+- **Per-Tool Memory**: The extension independently remembers your configuration (color, size, opacity) for *every single tool*. Switch from a massive yellow highlighter to a tiny blue pen, and the extension will seamlessly restore your exact settings for both.
 
 ### 📜 Surfaces
 - **Overlay Mode**: Draw directly on top of the live website. Your drawings stick to their positions even as you scroll!
@@ -23,12 +25,18 @@ Web Marker is a powerful and lightweight Chrome extension that turns any webpage
   - **Pinnable**: Click the 📌 icon to lock it open. It will automatically push the website's content to the left so it doesn't cover anything you're reading.
 
 ### ✨ Advanced Capabilities
+- **Zero-Latency Drawing**: Features an optimistic rendering engine that instantly draws strokes directly to your screen with absolute zero background delay.
+- **Stylus Optimized**: Features advanced stylus support (using Pointer Events) including jitter-free toolbar tapping and smart auto-collapsing UI when drawing.
 - **Add Scroll Space**: Reached the bottom of an article but still need room to draw? Click the **Add Scroll Space** button (down arrow icon) to inject massive amounts of blank space at the bottom of any website!
 - **Undo / Redo / Clear**: Full history tracking (up to 30 states to prevent memory leaks).
 - **Export to PNG**: Instantly download your drawings as a transparent PNG.
-- **Persistent State**: Built with Manifest V3 Service Workers and `chrome.storage.session`. Your drawings won't disappear if you leave the tab idle!
+- **Persistent State**: Built with Manifest V3 Service Workers and `chrome.storage.local`. Your drawings and tool configurations will persist across all tabs and browser restarts!
 
 ## Keyboard Shortcuts
+- `Ctrl + Shift + P` / `Cmd + Shift + P` : Select Pen Tool
+- `Ctrl + Shift + E` / `Cmd + Shift + E` : Select Eraser Tool
+- `Ctrl + Shift + D` / `Cmd + Shift + D` : Select Laser Pointer Tool
+- `Ctrl + Shift + Y` / `Cmd + Shift + Y` : Clear Active Canvas
 - `Ctrl + Z` / `Cmd + Z` : Undo
 - `Ctrl + Y` / `Cmd + Shift + Z` : Redo
 - `Ctrl + Shift + X` / `Cmd + Shift + X` : Toggle Side Panel

@@ -184,6 +184,25 @@
       
       const overlayToggle = shadow.querySelector('.wm-toggle-btn[data-toggle="overlay"]');
       if (overlayToggle) overlayToggle.classList.toggle('active', drawingEnabled);
+    } else if (msg.type === 'COMMAND') {
+      const cmd = msg.payload.command;
+      if (cmd === 'tool_pen') { if (toolbar && toolbar.setActiveTool) toolbar.setActiveTool('pen'); }
+      else if (cmd === 'tool_eraser') { if (toolbar && toolbar.setActiveTool) toolbar.setActiveTool('eraser'); }
+      else if (cmd === 'tool_laser') { if (toolbar && toolbar.setActiveTool) toolbar.setActiveTool('laser'); }
+      else if (cmd === 'action_clear') {
+        let targetEngine = activeEngine;
+        if (sidePanel.isVisible()) {
+          const panelRect = sidePanel.panel.getBoundingClientRect();
+          if (mouseX >= panelRect.left) {
+            targetEngine = sidePanel.getEngine();
+          } else {
+            targetEngine = overlayEngine;
+          }
+        } else {
+          targetEngine = overlayEngine;
+        }
+        if (targetEngine) targetEngine.clear();
+      }
     } else if (msg.type === 'SURFACE_UPDATED') {
       const { surfaceId, strokes } = msg.payload;
       if (surfaceId === 'sidePanel' && sidePanel) {

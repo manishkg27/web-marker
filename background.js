@@ -20,7 +20,12 @@ let globalSidePanelData = null;
 
 async function saveGlobalSidePanel() {
   if (globalSidePanelData) {
-    await chrome.storage.local.set({ global_sidePanel: globalSidePanelData });
+    const strippedData = {
+      strokes: globalSidePanelData.strokes,
+      undoStack: [],
+      redoStack: []
+    };
+    await chrome.storage.local.set({ global_sidePanel: strippedData });
   }
 }
 
@@ -58,7 +63,23 @@ async function getTabData(tabId) {
 async function saveTabData(tabId) {
   if (tabStore.has(tabId)) {
     const key = `tabData_${tabId}`;
-    await chrome.storage.session.set({ [key]: tabStore.get(tabId) });
+    const data = tabStore.get(tabId);
+    
+    // Strip undo/redo stacks to prevent massive JSON serialization lag
+    const strippedData = {};
+    for (const [k, v] of Object.entries(data)) {
+      if (v && Array.isArray(v.strokes)) {
+        strippedData[k] = {
+          strokes: v.strokes,
+          undoStack: [],
+          redoStack: []
+        };
+      } else {
+        strippedData[k] = v;
+      }
+    }
+    
+    await chrome.storage.session.set({ [key]: strippedData });
   }
 }
 
@@ -98,7 +119,7 @@ async function broadcastSidePanelUpdate() {
 // ── Deep-copy utility ───────────────────────────────────────
 
 function deepCopy(arr) {
-  return JSON.parse(JSON.stringify(arr));
+  return typeof structuredClone === 'function' ? structuredClone(arr) : JSON.parse(JSON.stringify(arr));
 }
 
 // ── Undo / Redo snapshot helpers ────────────────────────────
@@ -141,7 +162,7 @@ async function handleAddStroke(tabId, payload, sendResponse) {
   } else {
     await saveTabData(tabId);
   }
-  sendResponse({ success: true, data: { strokes: collection.strokes } });
+  sendResponse({ success: true });
 }
 
 async function handleUndo(tabId, payload, sendResponse) {
@@ -215,12 +236,28 @@ async function handleSetTool(tabId, payload, sendResponse) {
 
 async function handleGetTool(tabId, sendResponse) {
   const result = await chrome.storage.local.get('globalToolState');
-  const toolState = result.globalToolState || {
-    activeTool: 'pen',
-    color: '#ff3366',
-    size: 3,
-    opacity: 1,
-  };
+  let toolState = result.globalToolState;
+
+  if (!toolState || !toolState.tools) {
+    const oldColor = toolState?.color || '#ff3366';
+    const oldSize = toolState?.size || 3;
+    const oldOpacity = toolState?.opacity || 1;
+    const oldTool = toolState?.activeTool || 'pen';
+
+    toolState = {
+      activeTool: oldTool,
+      tools: {
+        pen: { color: oldColor, size: oldSize, opacity: oldOpacity },
+        highlighter: { color: '#ffff66', size: 15, opacity: 0.35 },
+        laser: { color: '#ff0000', size: 4, opacity: 1 },
+        eraser: { size: 20 },
+        arrow: { color: oldColor, size: oldSize, opacity: oldOpacity },
+        text: { color: oldColor, size: 24, opacity: oldOpacity }
+      }
+    };
+    await chrome.storage.local.set({ globalToolState: toolState });
+  }
+
   sendResponse({ success: true, data: toolState });
 }
 
@@ -327,6 +364,14 @@ chrome.action.onClicked.addListener(async (tab) => {
       console.error('[Web Marker BG] Error toggling drawing on action click:', err);
     }
   }
+});
+
+chrome.commands.onCommand.addListener((command) => {
+  chrome.tabs.query({ active: true, currentWindow: true }, (tabs) => {
+    if (tabs[0]) {
+      chrome.tabs.sendMessage(tabs[0].id, { type: 'COMMAND', payload: { command } }).catch(() => {});
+    }
+  });
 });
 
 // ── Tab cleanup ─────────────────────────────────────────────

@@ -4,7 +4,6 @@
  * The core drawing engine for the Web Marker Chrome extension.
  * One CanvasEngine instance is created per drawing surface:
  *   - 'overlay'         — scroll-aware, drawn over the live page
- *   - 'blankPage_0'…4   — full blank-page canvases
  *   - 'sidePanel'       — thumbnail / mini canvas in the side panel
  *
  * Coordinates:
@@ -32,8 +31,35 @@ const ToolRenderers = {
         ctx.fillStyle = color;
         ctx.fill();
       } else {
-        const start = Math.max(1, points.length - 3);
+        const start = stroke.lastRenderedIndex || 1;
         ToolRenderers._drawSmoothCurve(engine, ctx, points, start, size, false);
+        stroke.lastRenderedIndex = points.length - 1;
+      }
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ToolRenderers._drawSmoothCurve(engine, ctx, points, 1, size, false);
+    }
+  },
+  laser: {
+    incremental: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      
+      if (points.length === 1) {
+        const p = points[0];
+        const w = size * (p.pressure * 1.5 + 0.25);
+        ctx.beginPath();
+        ctx.arc(engine._tx(p.x), engine._ty(p.y), w / 2, 0, Math.PI * 2);
+        ctx.fillStyle = color;
+        ctx.fill();
+      } else {
+        const start = stroke.lastRenderedIndex || 1;
+        ToolRenderers._drawSmoothCurve(engine, ctx, points, start, size, false);
+        stroke.lastRenderedIndex = points.length - 1;
       }
     },
     full: (engine, ctx, stroke) => {
@@ -57,8 +83,9 @@ const ToolRenderers = {
         ctx.fillStyle = color;
         ctx.fill();
       } else {
-        const start = Math.max(1, points.length - 3);
+        const start = stroke.lastRenderedIndex || 1;
         ToolRenderers._drawSmoothCurve(engine, ctx, points, start, size, true);
+        stroke.lastRenderedIndex = points.length - 1;
       }
     },
     full: (engine, ctx, stroke) => {
@@ -92,6 +119,74 @@ const ToolRenderers = {
       engine._drawArrow(ctx, points, size);
     }
   },
+  line: {
+    incremental: (engine, ctx, stroke) => {
+      ctx.restore(); engine.redrawAll(); ctx.save();
+      ToolRenderers.line.full(engine, ctx, stroke);
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      if (points.length < 2) return;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size * 1.5;
+      ctx.lineCap = 'round';
+      
+      ctx.beginPath();
+      ctx.moveTo(engine._tx(points[0].x), engine._ty(points[0].y));
+      ctx.lineTo(engine._tx(points[points.length - 1].x), engine._ty(points[points.length - 1].y));
+      ctx.stroke();
+    }
+  },
+  rectangle: {
+    incremental: (engine, ctx, stroke) => {
+      ctx.restore(); engine.redrawAll(); ctx.save();
+      ToolRenderers.rectangle.full(engine, ctx, stroke);
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      if (points.length < 2) return;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size * 1.5;
+      ctx.lineJoin = 'round';
+      const p1 = points[0];
+      const p2 = points[points.length - 1];
+      let x = engine._tx(p1.x);
+      let y = engine._ty(p1.y);
+      let w = engine._tx(p2.x) - x;
+      let h = engine._ty(p2.y) - y;
+      ctx.beginPath();
+      ctx.rect(x, y, w, h);
+      ctx.stroke();
+    }
+  },
+  ellipse: {
+    incremental: (engine, ctx, stroke) => {
+      ctx.restore(); engine.redrawAll(); ctx.save();
+      ToolRenderers.ellipse.full(engine, ctx, stroke);
+    },
+    full: (engine, ctx, stroke) => {
+      const { points, color, size, opacity } = stroke;
+      if (points.length < 2) return;
+      ctx.globalAlpha = opacity;
+      ctx.strokeStyle = color;
+      ctx.lineWidth = size * 1.5;
+      const p1 = points[0];
+      const p2 = points[points.length - 1];
+      let x1 = engine._tx(p1.x);
+      let y1 = engine._ty(p1.y);
+      let x2 = engine._tx(p2.x);
+      let y2 = engine._ty(p2.y);
+      const centerX = (x1 + x2) / 2;
+      const centerY = (y1 + y2) / 2;
+      const radiusX = Math.abs(x2 - x1) / 2;
+      const radiusY = Math.abs(y2 - y1) / 2;
+      ctx.beginPath();
+      ctx.ellipse(centerX, centerY, radiusX, radiusY, 0, 0, 2 * Math.PI);
+      ctx.stroke();
+    }
+  },
   text: {
     incremental: (engine, ctx, stroke) => { /* none */ },
     full: (engine, ctx, stroke) => {
@@ -118,14 +213,22 @@ const ToolRenderers = {
       ctx.beginPath();
       ctx.lineWidth = width;
 
+      let startX, startY;
+      if (i === 1) {
+        startX = engine._tx(p0.x);
+        startY = engine._ty(p0.y);
+      } else {
+        startX = (engine._tx(p0.x) + engine._tx(p1.x)) / 2;
+        startY = (engine._ty(p0.y) + engine._ty(p1.y)) / 2;
+      }
+      ctx.moveTo(startX, startY);
+
       if (i < points.length - 1) {
         const p2 = points[i + 1];
-        const midX = (engine._tx(p1.x) + engine._tx(p2.x)) / 2;
-        const midY = (engine._ty(p1.y) + engine._ty(p2.y)) / 2;
-        ctx.moveTo(engine._tx(p0.x), engine._ty(p0.y));
-        ctx.quadraticCurveTo(engine._tx(p1.x), engine._ty(p1.y), midX, midY);
+        const endX = (engine._tx(p1.x) + engine._tx(p2.x)) / 2;
+        const endY = (engine._ty(p1.y) + engine._ty(p2.y)) / 2;
+        ctx.quadraticCurveTo(engine._tx(p1.x), engine._ty(p1.y), endX, endY);
       } else {
-        ctx.moveTo(engine._tx(p0.x), engine._ty(p0.y));
         ctx.lineTo(engine._tx(p1.x), engine._ty(p1.y));
       }
       ctx.stroke();
@@ -157,10 +260,11 @@ class CanvasEngine {
 
     /** Active tool configuration — mutated via setToolState() */
     this.toolState = {
-      activeTool: 'pen',   // 'pen' | 'highlighter' | 'arrow' | 'eraser' | 'text'
+      activeTool: 'pen',
       color: '#ff3366',
       size: 3,
       opacity: 1,
+      tools: {}
     };
 
     // DPI values set by _setupCanvas
@@ -183,15 +287,25 @@ class CanvasEngine {
 
   _setupCanvas() {
     const dpr = window.devicePixelRatio || 1;
-    const rect = this.canvas.getBoundingClientRect();
+    
+    // Use offsetWidth to get unscaled CSS dimensions, ignoring transform: scale()
+    let cssWidth = this.canvas.offsetWidth;
+    let cssHeight = this.canvas.offsetHeight;
+    
+    // Fallback if offset is 0 (e.g. display: none)
+    if (cssWidth === 0 || cssHeight === 0) {
+      const rect = this.canvas.getBoundingClientRect();
+      cssWidth = rect.width;
+      cssHeight = rect.height;
+    }
 
-    this.canvas.width = rect.width * dpr;
-    this.canvas.height = rect.height * dpr;
+    this.canvas.width = cssWidth * dpr;
+    this.canvas.height = cssHeight * dpr;
     this.ctx.scale(dpr, dpr);
 
     this.dpr = dpr;
-    this.cssWidth = rect.width;
-    this.cssHeight = rect.height;
+    this.cssWidth = cssWidth;
+    this.cssHeight = cssHeight;
   }
 
   // ---------------------------------------------------------------------------
@@ -283,16 +397,22 @@ class CanvasEngine {
       return;
     }
 
-    // pen / highlighter / arrow — start a new stroke
+    // pen / highlighter / laser / arrow — start a new stroke
     this.isDrawing = true;
     this.canvas.setPointerCapture(e.pointerId);
 
+    if (tool === 'laser' && this._laserTimeout) {
+      clearTimeout(this._laserTimeout);
+      this._laserTimeout = null;
+    }
+
+    const config = (this.toolState.tools && this.toolState.tools[tool]) || { color: '#ff3366', size: 3, opacity: 1 };
     this.currentStroke = {
       id: crypto.randomUUID(),
       tool,
-      color: this.toolState.color,
-      size: this.toolState.size,
-      opacity: this.toolState.opacity,
+      color: config.color,
+      size: config.size,
+      opacity: config.opacity || 1,
       points: [this._getPoint(e)],
       timestamp: Date.now(),
     };
@@ -315,7 +435,41 @@ class CanvasEngine {
     // Use coalesced events for maximum input fidelity (120-240 Hz devices)
     const events = e.getCoalescedEvents?.() || [e];
     for (const ce of events) {
-      this.currentStroke.points.push(this._getPoint(ce));
+      let pt = this._getPoint(ce);
+
+      // Shift-to-Snap logic for continuous drawing tools
+      if (e.shiftKey && ['pen', 'highlighter', 'laser'].includes(this.currentStroke.tool)) {
+        const startPt = this.currentStroke.points[0];
+        const dx = Math.abs(pt.x - startPt.x);
+        const dy = Math.abs(pt.y - startPt.y);
+        if (dx > dy) {
+          pt.y = startPt.y; // perfectly horizontal
+        } else {
+          pt.x = startPt.x; // perfectly vertical
+        }
+      } else if (e.shiftKey && ['rectangle', 'ellipse', 'line', 'arrow'].includes(this.currentStroke.tool)) {
+        const startPt = this.currentStroke.points[0];
+        const dx = pt.x - startPt.x;
+        const dy = pt.y - startPt.y;
+        const absDx = Math.abs(dx);
+        const absDy = Math.abs(dy);
+        
+        if (['rectangle', 'ellipse'].includes(this.currentStroke.tool)) {
+          // Snap to 1:1 aspect ratio (square/circle)
+          const size = Math.max(absDx, absDy);
+          pt.x = startPt.x + (dx < 0 ? -size : size);
+          pt.y = startPt.y + (dy < 0 ? -size : size);
+        } else {
+          // Snap horizontal or vertical for line/arrow
+          if (absDx > absDy) {
+            pt.y = startPt.y;
+          } else {
+            pt.x = startPt.x;
+          }
+        }
+      }
+
+      this.currentStroke.points.push(pt);
     }
 
     // Incremental render (no full redraw for perf)
@@ -335,27 +489,42 @@ class CanvasEngine {
     // Eraser doesn't produce strokes
     if (this.toolState.activeTool === 'eraser') return;
 
-    // Only persist strokes with at least 2 points
-    if (this.currentStroke && this.currentStroke.points.length >= 2) {
-      try {
-        const response = await chrome.runtime.sendMessage({
-          type: 'ADD_STROKE',
-          payload: { surfaceId: this.surfaceId, stroke: this.currentStroke },
-        });
+    // Capture the stroke synchronously to prevent race conditions with the next pointerdown
+    const strokeToSave = this.currentStroke;
+    this.currentStroke = null;
 
-        if (response?.success) {
-          this.strokes = response.data.strokes;
-          this.redrawAll();
+    // Only persist strokes with at least 2 points
+    if (strokeToSave && strokeToSave.points.length >= 2) {
+      // Optimistic update: instantly apply stroke to canvas without waiting for background
+      this.strokes.push(strokeToSave);
+      this.redrawAll();
+
+      if (strokeToSave.tool === 'laser') {
+        // Ephemeral: Laser pointer stays until 2.5s of inactivity.
+        if (this._laserTimeout) {
+          clearTimeout(this._laserTimeout);
         }
-      } catch (err) {
-        // Background unreachable — keep stroke locally so user doesn't lose work
-        console.warn('[CanvasEngine] ADD_STROKE failed, keeping stroke locally:', err);
-        this.strokes.push(this.currentStroke);
-        this.redrawAll();
+        this._laserTimeout = setTimeout(() => {
+          let hasLaser = false;
+          this.strokes = this.strokes.filter(s => {
+            if (s.tool === 'laser') {
+              hasLaser = true;
+              return false;
+            }
+            return true;
+          });
+          if (hasLaser) this.redrawAll();
+        }, 2500);
+      } else {
+        // Send persistent strokes to the background.
+        chrome.runtime.sendMessage({
+          type: 'ADD_STROKE',
+          payload: { surfaceId: this.surfaceId, stroke: strokeToSave },
+        }).catch(err => {
+          console.warn('[CanvasEngine] Async ADD_STROKE failed:', err);
+        });
       }
     }
-
-    this.currentStroke = null;
   }
 
   // ---------------------------------------------------------------------------
@@ -454,7 +623,8 @@ class CanvasEngine {
    */
   _handleErase(e) {
     const point = this._getPoint(e);
-    const hitRadius = this.toolState.size * 3;
+    const config = (this.toolState.tools && this.toolState.tools['eraser']) || { size: 20 };
+    const hitRadius = config.size;
 
     // Iterate in reverse so top-most stroke is erased first
     for (let i = this.strokes.length - 1; i >= 0; i--) {
@@ -497,12 +667,9 @@ class CanvasEngine {
   // Text Tool
   // ---------------------------------------------------------------------------
 
-  /**
-   * Dispatch a custom event so content.js can create a floating text input
-   * at the click location.
-   */
   _handleText(e) {
     const point = this._getPoint(e);
+
     this.canvas.dispatchEvent(
       new CustomEvent('wm-text-request', {
         detail: {
@@ -510,7 +677,7 @@ class CanvasEngine {
           y: e.clientY,
           docX: point.x,
           docY: point.y,
-          surfaceId: this.surfaceId,
+          surfaceId: this.surfaceId
         },
         bubbles: true,
         composed: true,

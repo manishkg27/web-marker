@@ -6,6 +6,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
       <div class="wm-side-panel-header">
         <span class="wm-side-panel-title">Notes</span>
         <div class="wm-side-panel-controls">
+          <button class="wm-export-btn" id="wm-side-export-btn" title="Export PNG" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">💾</button>
           <button class="wm-undo-btn" id="wm-side-undo-btn" title="Undo" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">↩️</button>
           <button class="wm-redo-btn" id="wm-side-redo-btn" title="Redo" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">↪️</button>
           <button class="wm-clear-btn" id="wm-side-clear-btn" title="Clear Panel" style="border:none;background:transparent;cursor:pointer;font-size:14px;color:var(--wm-text-dim);">🗑️</button>
@@ -26,6 +27,7 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
   const ghost = shadowRoot.getElementById('wm-side-panel-ghost');
   const panel = shadowRoot.getElementById('wm-side-panel');
   const resizer = shadowRoot.getElementById('wm-panel-resizer');
+  const exportBtn = shadowRoot.getElementById('wm-side-export-btn');
   const undoBtn = shadowRoot.getElementById('wm-side-undo-btn');
   const redoBtn = shadowRoot.getElementById('wm-side-redo-btn');
   const clearBtn = shadowRoot.getElementById('wm-side-clear-btn');
@@ -45,10 +47,18 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     }
   });
 
-  const engine = new window.CanvasEngine(canvas, 'sidePanel', { 
-    scrollAware: true, 
-    scrollContainer: sidePages 
-  });
+  let engine;
+  if (canvas) {
+    engine = new window.CanvasEngine(canvas, 'sidePanel', { scrollAware: true, scrollContainer: sidePages });
+    // Side panel tools always default to pen
+    engine.setToolState({
+      activeTool: 'pen',
+      color: '#ff3366',
+      size: 3,
+      opacity: 1,
+      tools: {}
+    });
+  }
 
   // Rollable pages spacer logic
   const spacer = document.createElement('div');
@@ -125,8 +135,32 @@ window.SidePanelModule = function(shadowRoot, toolbar) {
     }, 400);
   });
 
+  exportBtn.addEventListener('click', () => {
+    if (!engine) return;
+    
+    // Create a temporary canvas to merge background + drawing
+    const tempCanvas = document.createElement('canvas');
+    tempCanvas.width = canvas.width;
+    tempCanvas.height = canvas.height;
+    const tempCtx = tempCanvas.getContext('2d');
+    
+    // Fill with white background
+    tempCtx.fillStyle = '#ffffff';
+    tempCtx.fillRect(0, 0, tempCanvas.width, tempCanvas.height);
+    
+    // Draw the actual canvas content over it
+    tempCtx.drawImage(canvas, 0, 0);
+    
+    // Trigger download
+    const dataUrl = tempCanvas.toDataURL('image/png');
+    const a = document.createElement('a');
+    a.href = dataUrl;
+    a.download = `web-marker-notes-${new Date().toISOString().slice(0, 10)}.png`;
+    a.click();
+  });
+
   undoBtn.addEventListener('click', () => {
-    engine.undo();
+    if (engine) engine.undo();
   });
 
   redoBtn.addEventListener('click', () => {

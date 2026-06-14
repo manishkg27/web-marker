@@ -179,7 +179,7 @@
 .wm-tool-btn::after,
 .wm-action-btn::after,
 .wm-toggle-btn::after {
-  content: attr(title);
+  content: attr(aria-label);
   position: absolute;
   left: calc(100% + 10px);
   top: 50%;
@@ -581,7 +581,7 @@
   flex: 1;
   position: relative;
   width: 100%;
-  overflow-x: hidden;
+  overflow-x: auto;
   overflow-y: auto;
   background: transparent;
 }

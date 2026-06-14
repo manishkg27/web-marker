@@ -11,6 +11,24 @@
   "permissions": ["tabs", "scripting", "storage"],
   "action": {},
   "background": { "service_worker": "background.js" },
+  "commands": {
+    "tool_pen": {
+      "suggested_key": { "default": "Ctrl+Shift+P", "mac": "Command+Shift+P" },
+      "description": "Select Pen Tool"
+    },
+    "tool_eraser": {
+      "suggested_key": { "default": "Ctrl+Shift+E", "mac": "Command+Shift+E" },
+      "description": "Select Eraser Tool"
+    },
+    "tool_laser": {
+      "suggested_key": { "default": "Ctrl+Shift+D", "mac": "Command+Shift+D" },
+      "description": "Select Laser Pointer Tool"
+    },
+    "action_clear": {
+      "suggested_key": { "default": "Ctrl+Shift+Y", "mac": "Command+Shift+Y" },
+      "description": "Clear Active Canvas"
+    }
+  },
   "content_scripts": [{
     "matches": ["<all_urls>"],
     "js": ["canvas.js", "toolbar.js", "sidePanel.js", "content.js"],
